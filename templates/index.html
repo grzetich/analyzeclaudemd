@@ -93,6 +93,7 @@
         <h1>Claude.md Topic Analyzer & Visualizer</h1>
         <div class="controls">
             <button class="button button-primary" onclick="startAnalysis()">Start Analysis</button>
+            <button class="button button-secondary" onclick="viewVisualization()">View Visualization</button>
         </div>
         <div id="status-message"></div>
 
@@ -100,22 +101,20 @@
             <h3>How to use:</h3>
             <ol>
                 <li>Ensure your GitHub Personal Access Token (PAT) is set as an environment variable named <strong>`GITHUB_PAT`</strong> on Render.com.</li>
-                <li>Click "Start Analysis". This will fetch `claude.md` files from public GitHub repos, preprocess them, and perform a simple word frequency analysis.</li>
-                <li>The results of the analysis (e.g., most common words) will be displayed below.</li>
+                <li>Click "Start Analysis". This will fetch `claude.md` files from public GitHub repos, preprocess them, train an LDA model, and generate an interactive topic visualization. This might take a few minutes.</li>
+                <li>Once the analysis is complete (a success message will appear), click "View Visualization" to open the interactive `pyLDAvis` chart in a new tab.</li>
+                <li>The `pyLDAvis` chart allows you to explore the discovered topics and their most relevant words.</li>
             </ol>
             <p><strong>Note:</strong> The GitHub API has rate limits. If you hit limits, the collection might be incomplete. The MVP currently limits collection to 500 files to manage this.</p>
-            <div id="analysis-results" style="margin-top: 20px; font-family: monospace; white-space: pre-wrap;"></div>
         </div>
     </div>
 
     <script>
         async function startAnalysis() {
             const statusDiv = document.getElementById('status-message');
-            const resultsDiv = document.getElementById('analysis-results');
             statusDiv.className = ''; // Clear previous classes
             statusDiv.textContent = 'Analysis started... This might take a few minutes depending on data volume and API limits.';
             statusDiv.classList.add('status-warning');
-            resultsDiv.textContent = ''; // Clear previous results
 
             try {
                 const response = await fetch('/analyze', { method: 'POST' });
@@ -124,13 +123,6 @@
                 statusDiv.textContent = data.message;
                 if (data.status === 'success') {
                     statusDiv.classList.add('status-success');
-                    if (data.most_common_words) {
-                        let resultsText = 'Most Common Words:\n';
-                        data.most_common_words.forEach(item => {
-                            resultsText += `- ${item[0]}: ${item[1]}\n`;
-                        });
-                        resultsDiv.textContent = resultsText;
-                    }
                 } else if (data.status === 'warning') {
                     statusDiv.classList.add('status-warning');
                 } else {
@@ -142,6 +134,12 @@
                 statusDiv.classList.add('status-error');
             }
         }
+
+        function viewVisualization() {
+            window.open('/visualization', '_blank');
+        }
     </script>
+</body>
+</html>
 </body>
 </html>

@@ -7,15 +7,25 @@ import nltk
 from nltk.corpus import stopwords
 from nltk.stem import WordNetLemmatizer
 from nltk.tokenize import word_tokenize
-from collections import Counter
 
-from flask import Flask, render_template, jsonify
+from gensim import corpora
+from gensim.models import LdaModel
+from gensim.models.coherencemodel import CoherenceModel
+
+import pyLDAvis
+import pyLDAvis.gensim_models as gensim_models
+import warnings
+
+from flask import Flask, render_template, send_from_directory, jsonify
 from dotenv import load_dotenv
 
 # --- Configuration ---
 load_dotenv() # Load environment variables from .env file (for local development)
 
 app = Flask(__name__)
+
+# Suppress pyLDAvis deprecation warnings
+warnings.filterwarnings("ignore", category=DeprecationWarning)
 
 # GitHub API configuration
 GITHUB_TOKEN = os.getenv("GITHUB_PAT")
@@ -50,7 +60,10 @@ except nltk.downloader.DownloadError:
 stop_words = set(stopwords.words('english'))
 lemmatizer = WordNetLemmatizer()
 
-# --- Helper Functions ---
+# Global variable to store visualization HTML (cache it after first run)
+VIS_HTML_PATH = "templates/lda_visualization.html"
+
+# --- Helper Functions (from previous responses) ---
 
 def get_claude_md_files(query, headers, max_files=100): # Limiting for MVP and rate limits
     """
@@ -130,7 +143,7 @@ def get_claude_md_files(query, headers, max_files=100): # Limiting for MVP and r
 
 def preprocess_text(text):
     """
-    Cleans and preprocesses text for simple analysis.
+    Cleans and preprocesses text for LDA.
     """
     text = text.lower()
     text = re.sub(r'[^a-zA-Z\s]', '', text)
@@ -139,30 +152,54 @@ def preprocess_text(text):
     tokens = [lemmatizer.lemmatize(word) for word in tokens]
     return tokens
 
-def perform_simple_analysis(documents):
+def perform_lda_and_visualize(documents, num_topics=5):
     """
-    Performs simple word frequency analysis on the given documents.
+    Performs LDA on the given documents and saves the pyLDAvis visualization.
     """
     if not documents:
-        return {"message": "No documents provided for analysis."}
+        print("No documents provided for LDA analysis.")
+        return False
 
-    all_tokens = []
-    for doc in documents:
-        all_tokens.extend(preprocess_text(doc))
+    processed_docs = [preprocess_text(doc) for doc in documents]
+      
+    # Filter out empty processed documents
+    processed_docs = [doc for doc in processed_docs if doc]
+    if not processed_docs:
+        print("No valid documents after preprocessing for LDA analysis.")
+        return False
 
-    if not all_tokens:
-        return {"message": "No valid tokens after preprocessing."}
+    dictionary = corpora.Dictionary(processed_docs)
+    # Filter out tokens that appear in less than no_below documents (absolute number)
+    # or in more than no_above fraction of total corpus documents (fraction)
+    # and keep only the top keep_n most frequent tokens.
+    dictionary.filter_extremes(no_below=5, no_above=0.5, keep_n=100000)
+      
+    corpus = [dictionary.doc2bow(doc) for doc in processed_docs]
 
-    word_counts = Counter(all_tokens)
-    most_common_words = word_counts.most_common(20) # Get top 20 most common words
+    if not corpus:
+        print("Corpus is empty after dictionary filtering.")
+        return False
 
-    return {
-        "status": "success",
-        "message": "Simple analysis complete!",
-        "total_documents": len(documents),
-        "total_words_after_preprocessing": len(all_tokens),
-        "most_common_words": most_common_words
-    }
+    print(f"Starting LDA training with {len(processed_docs)} documents and {len(dictionary)} unique tokens...")
+    try:
+        lda_model = LdaModel(
+            corpus=corpus,
+            id2word=dictionary,
+            num_topics=num_topics,
+            random_state=100,
+            chunksize=2000, # Larger chunksize for potentially larger corpus
+            passes=10,
+            alpha='auto',
+            per_word_topics=True
+        )
+
+        vis = gensim_models.prepare(lda_model, corpus, dictionary)
+        pyLDAvis.save_html(vis, VIS_HTML_PATH)
+        print(f"LDA visualization saved to {VIS_HTML_PATH}")
+        return True
+    except Exception as e:
+        print(f"Error during LDA modeling or visualization: {e}")
+        return False
 
 # --- Flask Routes ---
 
@@ -174,8 +211,8 @@ def index():
 @app.route('/analyze', methods=['POST'])
 def analyze_data():
     """
-    Triggers the data collection and simple analysis.
-    Returns a status message and analysis results.
+    Triggers the data collection, analysis, and visualization.
+    Returns a status message.
     """
     if not GITHUB_TOKEN:
         return jsonify({"status": "error", "message": "GitHub PAT is not set. Please configure GITHUB_PAT environment variable."}), 400
@@ -186,12 +223,20 @@ def analyze_data():
     if not collected_documents:
         return jsonify({"status": "warning", "message": "No claude.md files found or an error occurred during collection. Check logs for details."})
 
-    analysis_results = perform_simple_analysis(collected_documents)
+    success = perform_lda_and_visualize(collected_documents, num_topics=5) # Can make num_topics configurable later
 
-    if analysis_results.get("status") == "success":
-        return jsonify(analysis_results)
+    if success:
+        return jsonify({"status": "success", "message": "Analysis complete! Refresh the page or click 'View Visualization' to see results."})
     else:
-        return jsonify({"status": "error", "message": analysis_results.get("message", "Analysis failed.")}), 500
+        return jsonify({"status": "error", "message": "Analysis failed. Check server logs for details."}), 500
+
+@app.route('/visualization')
+def get_visualization():
+    """Serves the generated pyLDAvis HTML."""
+    if os.path.exists(VIS_HTML_PATH):
+        return send_from_directory('templates', 'lda_visualization.html')
+    else:
+        return "Visualization not yet generated. Please trigger analysis first.", 404
 
 # --- Run the Flask App ---
 if __name__ == '__main__':

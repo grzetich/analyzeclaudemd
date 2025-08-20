@@ -1,5 +1,7 @@
 Flask==2.3.2
 requests==2.31.0
 nltk==3.8.1
+gensim==4.3.2
+pyldavis==3.4.1
 gunicorn==21.2.0
 python-dotenv==1.0.0
