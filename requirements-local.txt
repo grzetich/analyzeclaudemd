@@ -1,0 +1,10 @@
+Flask==3.0.0
+requests==2.32.3
+nltk==3.8.1
+scikit-learn
+numpy
+scipy
+pandas
+jinja2==3.1.4
+python-dotenv==1.0.1
+# Note: gunicorn not needed for local development
