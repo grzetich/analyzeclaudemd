@@ -42,18 +42,28 @@ SEARCH_QUERY = "filename:claude.md"
 BASE_URL = "https://api.github.com/search/code"
 
 # NLTK downloads (run once on startup or when container builds)
-try:
-    nltk.data.find('corpora/stopwords')
-except nltk.downloader.DownloadError:
-    nltk.download('stopwords')
-try:
-    nltk.data.find('corpora/wordnet')
-except nltk.downloader.DownloadError:
-    nltk.download('wordnet')
-try:
-    nltk.data.find('tokenizers/punkt')
-except nltk.downloader.DownloadError:
-    nltk.download('punkt')
+def download_nltk_data():
+    """Download required NLTK data with error handling"""
+    datasets = [
+        ('corpora/stopwords', 'stopwords'),
+        ('corpora/wordnet', 'wordnet'),
+        ('tokenizers/punkt', 'punkt')
+    ]
+    
+    for path, name in datasets:
+        try:
+            nltk.data.find(path)
+            print(f"NLTK {name} already available")
+        except (LookupError, OSError):
+            try:
+                print(f"Downloading NLTK {name}...")
+                nltk.download(name, quiet=True)
+                print(f"Successfully downloaded NLTK {name}")
+            except Exception as e:
+                print(f"Failed to download NLTK {name}: {e}")
+
+# Download NLTK data on startup
+download_nltk_data()
 
 stop_words = set(stopwords.words('english'))
 lemmatizer = WordNetLemmatizer()
