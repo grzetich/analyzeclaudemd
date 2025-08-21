@@ -8,12 +8,9 @@ from nltk.corpus import stopwords
 from nltk.stem import WordNetLemmatizer
 from nltk.tokenize import word_tokenize
 
-from gensim import corpora
-from gensim.models import LdaModel
-from gensim.models.coherencemodel import CoherenceModel
-
-import pyLDAvis
-import pyLDAvis.gensim_models as gensim_models
+from sklearn.feature_extraction.text import CountVectorizer
+from sklearn.decomposition import LatentDirichletAllocation
+import json
 import warnings
 
 from flask import Flask, render_template, send_from_directory, jsonify
@@ -24,8 +21,9 @@ load_dotenv() # Load environment variables from .env file (for local development
 
 app = Flask(__name__)
 
-# Suppress pyLDAvis deprecation warnings
+# Suppress warnings
 warnings.filterwarnings("ignore", category=DeprecationWarning)
+warnings.filterwarnings("ignore", category=FutureWarning)
 
 # GitHub API configuration
 GITHUB_TOKEN = os.getenv("GITHUB_PAT")
@@ -154,52 +152,97 @@ def preprocess_text(text):
 
 def perform_lda_and_visualize(documents, num_topics=5):
     """
-    Performs LDA on the given documents and saves the pyLDAvis visualization.
+    Performs LDA on the given documents and creates a simple HTML visualization.
     """
     if not documents:
         print("No documents provided for LDA analysis.")
         return False
 
-    processed_docs = [preprocess_text(doc) for doc in documents]
-      
-    # Filter out empty processed documents
-    processed_docs = [doc for doc in processed_docs if doc]
+    # Preprocess documents into strings for CountVectorizer
+    processed_docs = []
+    for doc in documents:
+        tokens = preprocess_text(doc)
+        if tokens:
+            processed_docs.append(' '.join(tokens))
+    
     if not processed_docs:
         print("No valid documents after preprocessing for LDA analysis.")
         return False
 
-    dictionary = corpora.Dictionary(processed_docs)
-    # Filter out tokens that appear in less than no_below documents (absolute number)
-    # or in more than no_above fraction of total corpus documents (fraction)
-    # and keep only the top keep_n most frequent tokens.
-    dictionary.filter_extremes(no_below=5, no_above=0.5, keep_n=100000)
-      
-    corpus = [dictionary.doc2bow(doc) for doc in processed_docs]
-
-    if not corpus:
-        print("Corpus is empty after dictionary filtering.")
-        return False
-
-    print(f"Starting LDA training with {len(processed_docs)} documents and {len(dictionary)} unique tokens...")
+    print(f"Starting LDA training with {len(processed_docs)} documents...")
     try:
-        lda_model = LdaModel(
-            corpus=corpus,
-            id2word=dictionary,
-            num_topics=num_topics,
-            random_state=100,
-            chunksize=2000, # Larger chunksize for potentially larger corpus
-            passes=10,
-            alpha='auto',
-            per_word_topics=True
+        # Create document-term matrix
+        vectorizer = CountVectorizer(
+            max_features=1000,
+            min_df=5,
+            max_df=0.5,
+            stop_words='english'
         )
-
-        vis = gensim_models.prepare(lda_model, corpus, dictionary)
-        pyLDAvis.save_html(vis, VIS_HTML_PATH)
+        doc_term_matrix = vectorizer.fit_transform(processed_docs)
+        
+        # Perform LDA
+        lda_model = LatentDirichletAllocation(
+            n_components=num_topics,
+            random_state=100,
+            max_iter=10,
+            learning_method='online'
+        )
+        lda_model.fit(doc_term_matrix)
+        
+        # Get feature names
+        feature_names = vectorizer.get_feature_names_out()
+        
+        # Create simple HTML visualization
+        create_simple_visualization(lda_model, feature_names, num_topics)
         print(f"LDA visualization saved to {VIS_HTML_PATH}")
         return True
     except Exception as e:
         print(f"Error during LDA modeling or visualization: {e}")
         return False
+
+def create_simple_visualization(lda_model, feature_names, num_topics):
+    """
+    Creates a simple HTML visualization of LDA topics.
+    """
+    html_content = """
+    <!DOCTYPE html>
+    <html>
+    <head>
+        <title>LDA Topic Analysis</title>
+        <style>
+            body { font-family: Arial, sans-serif; margin: 20px; background-color: #f5f5f5; }
+            .container { max-width: 1000px; margin: auto; background: white; padding: 20px; border-radius: 8px; }
+            .topic { margin: 20px 0; padding: 15px; border: 1px solid #ddd; border-radius: 5px; background-color: #fafafa; }
+            .topic-title { color: #2c3e50; font-size: 18px; font-weight: bold; margin-bottom: 10px; }
+            .word { display: inline-block; margin: 2px 5px; padding: 3px 8px; background-color: #3498db; color: white; border-radius: 3px; font-size: 12px; }
+            .word-weight { opacity: 0.8; font-size: 10px; }
+        </style>
+    </head>
+    <body>
+        <div class="container">
+            <h1>Topic Analysis Results</h1>
+            <p>Discovered topics and their most representative words:</p>
+    """
+    
+    # Add topics
+    for topic_idx, topic in enumerate(lda_model.components_):
+        top_words_idx = topic.argsort()[-10:][::-1]
+        top_words = [feature_names[i] for i in top_words_idx]
+        weights = [topic[i] for i in top_words_idx]
+        
+        html_content += f'<div class="topic"><div class="topic-title">Topic {topic_idx + 1}</div>'
+        for word, weight in zip(top_words, weights):
+            html_content += f'<span class="word">{word} <span class="word-weight">({weight:.3f})</span></span>'
+        html_content += '</div>'
+    
+    html_content += """
+        </div>
+    </body>
+    </html>
+    """
+    
+    with open(VIS_HTML_PATH, 'w', encoding='utf-8') as f:
+        f.write(html_content)
 
 # --- Flask Routes ---
 
