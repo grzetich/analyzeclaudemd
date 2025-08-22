@@ -44,6 +44,12 @@ BASE_URL = "https://api.github.com/search/code"
 # NLTK downloads (run once on startup or when container builds)
 def download_nltk_data():
     """Download required NLTK data with error handling"""
+    # Set NLTK data path for deployment environments
+    if os.name != 'nt':
+        nltk_data_dir = '/tmp/nltk_data'
+        os.makedirs(nltk_data_dir, exist_ok=True)
+        nltk.data.path.append(nltk_data_dir)
+    
     datasets = [
         ('corpora/stopwords', 'stopwords'),
         ('corpora/wordnet', 'wordnet'),
@@ -57,7 +63,7 @@ def download_nltk_data():
         except (LookupError, OSError):
             try:
                 print(f"Downloading NLTK {name}...")
-                nltk.download(name, quiet=True)
+                nltk.download(name, quiet=True, download_dir='/tmp/nltk_data' if os.name != 'nt' else None)
                 print(f"Successfully downloaded NLTK {name}")
             except Exception as e:
                 print(f"Failed to download NLTK {name}: {e}")
@@ -69,7 +75,7 @@ stop_words = set(stopwords.words('english'))
 lemmatizer = WordNetLemmatizer()
 
 # Global variable to store visualization HTML (cache it after first run)
-VIS_HTML_PATH = "templates/lda_visualization.html"
+VIS_HTML_PATH = "/tmp/lda_visualization.html" if os.name != 'nt' else "templates/lda_visualization.html"
 
 # --- Helper Functions (from previous responses) ---
 
@@ -251,8 +257,14 @@ def create_simple_visualization(lda_model, feature_names, num_topics):
     </html>
     """
     
-    with open(VIS_HTML_PATH, 'w', encoding='utf-8') as f:
-        f.write(html_content)
+    try:
+        # Ensure directory exists for the file
+        os.makedirs(os.path.dirname(VIS_HTML_PATH), exist_ok=True)
+        with open(VIS_HTML_PATH, 'w', encoding='utf-8') as f:
+            f.write(html_content)
+    except Exception as e:
+        print(f"Error writing visualization file: {e}")
+        raise
 
 # --- Flask Routes ---
 
@@ -285,9 +297,14 @@ def analyze_data():
 
 @app.route('/visualization')
 def get_visualization():
-    """Serves the generated pyLDAvis HTML."""
+    """Serves the generated LDA visualization HTML."""
     if os.path.exists(VIS_HTML_PATH):
-        return send_from_directory('templates', 'lda_visualization.html')
+        try:
+            with open(VIS_HTML_PATH, 'r', encoding='utf-8') as f:
+                return f.read()
+        except Exception as e:
+            print(f"Error reading visualization file: {e}")
+            return f"Error loading visualization: {e}", 500
     else:
         return "Visualization not yet generated. Please trigger analysis first.", 404
 
