@@ -19,6 +19,8 @@ from sklearn.feature_extraction.text import CountVectorizer
 from sklearn.decomposition import LatentDirichletAllocation
 import json
 import warnings
+import atexit
+import shutil
 
 from flask import Flask, render_template, send_from_directory, jsonify
 from dotenv import load_dotenv
@@ -60,7 +62,7 @@ def download_nltk_data():
     datasets = [
         ('corpora/stopwords', 'stopwords'),
         ('corpora/wordnet', 'wordnet'),
-        ('tokenizers/punkt', 'punkt')
+        ('tokenizers/punkt_tab', 'punkt_tab')
     ]
     
     for path, name in datasets:
@@ -82,7 +84,29 @@ stop_words = set(stopwords.words('english'))
 lemmatizer = WordNetLemmatizer()
 
 # Global variable to store visualization HTML (cache it after first run)
+# Paths for temporary files
 VIS_HTML_PATH = "/tmp/lda_visualization.html" if os.name != 'nt' else "templates/lda_visualization.html"
+TEMP_DIRS = ["/tmp"] if os.name != 'nt' else ["temp"]
+
+# --- Cleanup Functions ---
+
+def cleanup_temp_files():
+    """Clean up temporary files created during analysis."""
+    try:
+        if os.path.exists(VIS_HTML_PATH):
+            os.remove(VIS_HTML_PATH)
+            print(f"Cleaned up visualization file: {VIS_HTML_PATH}")
+    except Exception as e:
+        print(f"Error during cleanup: {e}")
+
+def cleanup_on_analysis_complete():
+    """Clean up temporary data after successful visualization generation."""
+    # For now, we keep the visualization file since it's needed for viewing
+    # Could add more cleanup here if we create other temporary files
+    pass
+
+# Register cleanup function to run at exit
+atexit.register(cleanup_temp_files)
 
 # --- Helper Functions (from previous responses) ---
 
@@ -124,13 +148,36 @@ def get_claude_md_files(query, headers, max_files=100): # Limiting for MVP and r
                         file_response = requests.get(download_url, headers=headers)
                         if file_response.status_code == 200:
                             all_file_contents.append(file_response.text)
-                            print(f"  Downloaded: {item['repository']['full_name']}/{item['path']}")
+                            print(f"  Downloaded via download_url: {item['repository']['full_name']}/{item['path']}")
                         else:
                             print(f"  Failed to download {item['path']} from {item['repository']['full_name']}: {file_response.status_code}")
                     except Exception as e:
                         print(f"  Error downloading {item['path']} from {item['repository']['full_name']}: {e}")
                 else:
-                    print(f"  No download_url found for {item['path']} in {item['repository']['full_name']}. Skipping raw content fetch.")
+                    # Fallback to GitHub Contents API for public repos
+                    repo_full_name = item['repository']['full_name']
+                    file_path = item['path']
+                    contents_url = f"https://api.github.com/repos/{repo_full_name}/contents/{file_path}"
+                    
+                    try:
+                        contents_response = requests.get(contents_url, headers=headers)
+                        if contents_response.status_code == 200:
+                            contents_data = contents_response.json()
+                            if contents_data.get('encoding') == 'base64':
+                                # Decode base64 content
+                                content = base64.b64decode(contents_data['content']).decode('utf-8')
+                                all_file_contents.append(content)
+                                print(f"  Downloaded via Contents API: {repo_full_name}/{file_path}")
+                            else:
+                                print(f"  Unsupported encoding for {file_path} in {repo_full_name}: {contents_data.get('encoding')}")
+                        elif contents_response.status_code == 404:
+                            print(f"  File not found or repo is private: {repo_full_name}/{file_path}")
+                        elif contents_response.status_code == 403:
+                            print(f"  Access forbidden (likely private repo): {repo_full_name}/{file_path}")
+                        else:
+                            print(f"  Contents API failed for {repo_full_name}/{file_path}: {contents_response.status_code}")
+                    except Exception as e:
+                        print(f"  Error using Contents API for {repo_full_name}/{file_path}: {e}")
 
             # Check if there are more pages
             if "next" in response.links and len(all_file_contents) < max_files:
@@ -259,6 +306,11 @@ def create_simple_visualization(lda_model, feature_names, num_topics):
         html_content += '</div>'
     
     html_content += """
+            <div style="margin-top: 40px; padding: 20px; background-color: #e9ecef; border-radius: 5px; font-size: 12px; color: #6c757d; text-align: center;">
+                <strong>Privacy Notice:</strong> No data is saved or retained by this application. All analysis is performed in memory and temporary files are cleaned up after processing.
+                <br><br>
+                <a href="/how-it-works" style="color: #007bff; text-decoration: none; font-weight: bold;">How it works →</a>
+            </div>
         </div>
     </body>
     </html>
@@ -296,8 +348,13 @@ def analyze_data():
         return jsonify({"status": "warning", "message": "No claude.md files found or an error occurred during collection. Check logs for details."})
 
     success = perform_lda_and_visualize(collected_documents, num_topics=5) # Can make num_topics configurable later
+    
+    # Clean up collected documents from memory
+    collected_documents.clear()
+    collected_documents = None
 
     if success:
+        cleanup_on_analysis_complete()
         return jsonify({"status": "success", "message": "Analysis complete! Refresh the page or click 'View Visualization' to see results."})
     else:
         return jsonify({"status": "error", "message": "Analysis failed. Check server logs for details."}), 500
@@ -314,6 +371,11 @@ def get_visualization():
             return f"Error loading visualization: {e}", 500
     else:
         return "Visualization not yet generated. Please trigger analysis first.", 404
+
+@app.route('/how-it-works')
+def how_it_works():
+    """Renders the how it works page."""
+    return render_template('how_it_works.html')
 
 # --- Run the Flask App ---
 if __name__ == '__main__':

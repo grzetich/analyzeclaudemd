@@ -4,6 +4,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Claude.md Analyzer</title>
+    <link rel="icon" href="{{ url_for('static', filename='favicon.ico') }}" type="image/svg+xml">
     <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
     <style>
         body {
@@ -91,29 +92,20 @@
 <body>
     <div class="container">
         <h1>Claude.md Topic Analyzer & Visualizer</h1>
-        <div class="controls">
-            <button class="button button-primary" onclick="startAnalysis()">Start Analysis</button>
-            <button class="button button-secondary" onclick="viewVisualization()">View Visualization</button>
-        </div>
-        <div id="status-message"></div>
-
-        <div class="instructions">
-            <h3>How to use:</h3>
-            <ol>
-                <li>Ensure your GitHub Personal Access Token (PAT) is set as an environment variable named <strong>`GITHUB_PAT`</strong> on Render.com.</li>
-                <li>Click "Start Analysis". This will fetch `claude.md` files from public GitHub repos, preprocess them, train an LDA model, and generate an interactive topic visualization. This might take a few minutes.</li>
-                <li>Once the analysis is complete (a success message will appear), click "View Visualization" to open the interactive `pyLDAvis` chart in a new tab.</li>
-                <li>The `pyLDAvis` chart allows you to explore the discovered topics and their most relevant words.</li>
-            </ol>
-            <p><strong>Note:</strong> The GitHub API has rate limits. If you hit limits, the collection might be incomplete. The MVP currently limits collection to 500 files to manage this.</p>
+        <div id="status-message">Analysis starting automatically...</div>
+        <div id="visualization-container" style="display: none;">
+            <iframe id="viz-frame" src="" width="100%" height="600" style="border: none; border-radius: 8px;"></iframe>
         </div>
     </div>
 
     <script>
         async function startAnalysis() {
             const statusDiv = document.getElementById('status-message');
+            const vizContainer = document.getElementById('visualization-container');
+            const vizFrame = document.getElementById('viz-frame');
+            
             statusDiv.className = ''; // Clear previous classes
-            statusDiv.textContent = 'Analysis started... This might take a few minutes depending on data volume and API limits.';
+            statusDiv.textContent = 'Analysis running... Collecting claude.md files from GitHub and performing topic modeling.';
             statusDiv.classList.add('status-warning');
 
             try {
@@ -123,6 +115,10 @@
                 statusDiv.textContent = data.message;
                 if (data.status === 'success') {
                     statusDiv.classList.add('status-success');
+                    // Auto-display visualization
+                    vizFrame.src = '/visualization';
+                    vizContainer.style.display = 'block';
+                    statusDiv.textContent += ' Visualization loaded below.';
                 } else if (data.status === 'warning') {
                     statusDiv.classList.add('status-warning');
                 } else {
@@ -135,9 +131,10 @@
             }
         }
 
-        function viewVisualization() {
-            window.open('/visualization', '_blank');
-        }
+        // Auto-start analysis when page loads
+        window.addEventListener('DOMContentLoaded', function() {
+            startAnalysis();
+        });
     </script>
 </body>
 </html>

@@ -1,0 +1,197 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>How It Works - Claude.md Analyzer</title>
+    <link rel="icon" href="{{ url_for('static', filename='favicon.ico') }}" type="image/svg+xml">
+    <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            margin: 20px;
+            background-color: #f4f4f4;
+            color: #333;
+            line-height: 1.6;
+        }
+        .container {
+            max-width: 900px;
+            margin: auto;
+            background: #fff;
+            padding: 30px;
+            border-radius: 8px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+        }
+        h1 {
+            color: #0056b3;
+            text-align: center;
+            margin-bottom: 30px;
+            border-bottom: 2px solid #007bff;
+            padding-bottom: 10px;
+        }
+        h2 {
+            color: #0056b3;
+            margin-top: 30px;
+            margin-bottom: 15px;
+        }
+        .step {
+            background-color: #e9ecef;
+            padding: 20px;
+            margin: 20px 0;
+            border-radius: 5px;
+            border-left: 4px solid #007bff;
+        }
+        .step h3 {
+            margin-top: 0;
+            color: #007bff;
+        }
+        code {
+            background-color: #f8f9fa;
+            padding: 2px 4px;
+            border-radius: 3px;
+            font-family: 'Courier New', monospace;
+        }
+        .tech-list {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 15px;
+            margin: 20px 0;
+        }
+        .tech-item {
+            background-color: #f8f9fa;
+            padding: 15px;
+            border-radius: 5px;
+            text-align: center;
+            border: 1px solid #dee2e6;
+        }
+        .back-link {
+            text-align: center;
+            margin-top: 30px;
+            padding-top: 20px;
+            border-top: 1px solid #dee2e6;
+        }
+        .back-link a {
+            color: #007bff;
+            text-decoration: none;
+            font-weight: bold;
+        }
+        .back-link a:hover {
+            text-decoration: underline;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>How It Works</h1>
+        
+        <p>This application automatically analyzes <code>claude.md</code> files from public GitHub repositories to discover common themes and patterns in Claude AI documentation across the developer ecosystem.</p>
+
+        <h2>🔄 Process Overview</h2>
+        
+        <div class="step">
+            <h3>Step 1: Data Collection</h3>
+            <p>The app searches GitHub for files named <code>claude.md</code> (case-insensitive) using the GitHub API. It collects up to 500 files from public repositories to manage API rate limits and processing time.</p>
+            <ul>
+                <li>Uses GitHub's Code Search API to find relevant files</li>
+                <li>Falls back to GitHub Contents API for repositories without direct download URLs</li>
+                <li>Respects GitHub API rate limits (5,000 requests/hour with authentication)</li>
+            </ul>
+        </div>
+
+        <div class="step">
+            <h3>Step 2: Text Preprocessing</h3>
+            <p>Raw text from <code>claude.md</code> files is cleaned and prepared for analysis:</p>
+            <ul>
+                <li><strong>Tokenization:</strong> Break text into individual words using NLTK</li>
+                <li><strong>Filtering:</strong> Remove stopwords, punctuation, and very short words</li>
+                <li><strong>Lemmatization:</strong> Reduce words to their root forms (e.g., "running" → "run")</li>
+                <li><strong>Lowercase conversion:</strong> Normalize text case for consistency</li>
+            </ul>
+        </div>
+
+        <div class="step">
+            <h3>Step 3: Topic Modeling</h3>
+            <p>The preprocessed text is analyzed using <strong>Latent Dirichlet Allocation (LDA)</strong>:</p>
+            <ul>
+                <li><strong>Feature Extraction:</strong> Convert text to numerical vectors using CountVectorizer</li>
+                <li><strong>LDA Analysis:</strong> Discover 5 hidden topics across all documents</li>
+                <li><strong>Word Weights:</strong> Calculate importance of each word within topics</li>
+                <li><strong>Topic Interpretation:</strong> Extract top 10 most relevant words per topic</li>
+            </ul>
+        </div>
+
+        <div class="step">
+            <h3>Step 4: Visualization Generation</h3>
+            <p>Results are presented in a clean, interactive HTML visualization:</p>
+            <ul>
+                <li>Each topic displays its most representative words</li>
+                <li>Word importance scores are shown as weights</li>
+                <li>Topics are automatically labeled for easy interpretation</li>
+            </ul>
+        </div>
+
+        <div class="step">
+            <h3>Step 5: Cleanup</h3>
+            <p>The application maintains privacy and efficiency:</p>
+            <ul>
+                <li>Temporary files are automatically cleaned up</li>
+                <li>Document data is cleared from memory after analysis</li>
+                <li>No persistent storage of collected content</li>
+            </ul>
+        </div>
+
+        <h2>🛠 Technology Stack</h2>
+        
+        <div class="tech-list">
+            <div class="tech-item">
+                <strong>Flask 3.0</strong><br>
+                Web Framework
+            </div>
+            <div class="tech-item">
+                <strong>scikit-learn</strong><br>
+                LDA Implementation
+            </div>
+            <div class="tech-item">
+                <strong>NLTK 3.9</strong><br>
+                Text Processing
+            </div>
+            <div class="tech-item">
+                <strong>GitHub API</strong><br>
+                Data Collection
+            </div>
+            <div class="tech-item">
+                <strong>Python 3.13</strong><br>
+                Runtime Environment
+            </div>
+            <div class="tech-item">
+                <strong>HTML/CSS/JS</strong><br>
+                Frontend Interface
+            </div>
+        </div>
+
+        <h2>🔒 Privacy & Data Handling</h2>
+        
+        <p>This application is designed with privacy in mind:</p>
+        <ul>
+            <li><strong>No Data Storage:</strong> Files are processed in memory only</li>
+            <li><strong>Temporary Processing:</strong> All data is discarded after analysis</li>
+            <li><strong>Public Content Only:</strong> Only accesses publicly available repositories</li>
+            <li><strong>Anonymous Analysis:</strong> No tracking or identification of specific repositories</li>
+        </ul>
+
+        <h2>🎯 Use Cases</h2>
+        
+        <p>This tool helps researchers and developers:</p>
+        <ul>
+            <li><strong>Understand Claude Usage Patterns:</strong> Discover how developers document Claude integrations</li>
+            <li><strong>Identify Best Practices:</strong> Learn from common themes across successful Claude implementations</li>
+            <li><strong>Track Documentation Trends:</strong> Monitor evolution of Claude documentation standards</li>
+            <li><strong>Research AI Tool Adoption:</strong> Study patterns in AI-assisted development workflows</li>
+        </ul>
+
+        <div class="back-link">
+            <a href="/">← Back to Analysis</a>
+        </div>
+    </div>
+</body>
+</html>
