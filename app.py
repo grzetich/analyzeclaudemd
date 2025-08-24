@@ -1,5 +1,12 @@
 import os
+import sys
 import requests
+
+# Ensure UTF-8 output on Windows
+if os.name == 'nt':  # Windows
+    import io
+    sys.stdout = io.TextIOWrapper(sys.stdout.buffer, encoding='utf-8')
+    sys.stderr = io.TextIOWrapper(sys.stderr.buffer, encoding='utf-8')
 import base64
 import time
 import re
