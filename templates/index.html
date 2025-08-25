@@ -99,13 +99,13 @@
     </div>
 
     <script>
-        async function startAnalysis() {
+        async function checkAnalysis() {
             const statusDiv = document.getElementById('status-message');
             const vizContainer = document.getElementById('visualization-container');
             const vizFrame = document.getElementById('viz-frame');
             
             statusDiv.className = ''; // Clear previous classes
-            statusDiv.textContent = 'Analysis running... Collecting claude.md files from GitHub and performing topic modeling.';
+            statusDiv.textContent = 'Loading analysis results...';
             statusDiv.classList.add('status-warning');
 
             try {
@@ -121,19 +121,23 @@
                     statusDiv.textContent += ' Visualization loaded below.';
                 } else if (data.status === 'warning') {
                     statusDiv.classList.add('status-warning');
+                    // If analysis is running, poll for updates
+                    if (data.message.includes('running in the background') || data.message.includes('started in background')) {
+                        setTimeout(checkAnalysis, 30000); // Check again in 30 seconds
+                    }
                 } else {
                     statusDiv.classList.add('status-error');
                 }
             } catch (error) {
                 console.error('Error during analysis:', error);
-                statusDiv.textContent = 'An error occurred during analysis. Check console for details.';
+                statusDiv.textContent = 'An error occurred while checking analysis status. Check console for details.';
                 statusDiv.classList.add('status-error');
             }
         }
 
-        // Auto-start analysis when page loads
+        // Auto-start analysis check when page loads
         window.addEventListener('DOMContentLoaded', function() {
-            startAnalysis();
+            checkAnalysis();
         });
     </script>
 </body>
