@@ -82,11 +82,53 @@
 </head>
 <body>
     <div class="container">
-        <h1>How It Works</h1>
+        <h1>Understanding the Analysis Results</h1>
         
         <p>This application automatically analyzes <code>claude.md</code> files from public GitHub repositories to discover common themes and patterns in Claude AI documentation across the developer ecosystem.</p>
 
-        <h2>🔄 Process Overview</h2>
+        <h2>📊 What the Data Reveals</h2>
+        
+        <div class="step">
+            <h3>Topics are Common Themes</h3>
+            <p>Each "topic" represents a distinct pattern of words that frequently appear together across Claude.md files. These aren't arbitrary groupings—they reveal how developers actually use and document Claude in real projects.</p>
+            <ul>
+                <li><strong>Example:</strong> A topic containing words like "assistant", "role", "context" likely represents how developers configure Claude's behavior</li>
+                <li><strong>Example:</strong> Words like "test", "spec", "validate" suggest a topic about testing and quality assurance practices</li>
+            </ul>
+        </div>
+
+        <div class="step">
+            <h3>Word Weights Show Importance</h3>
+            <p>The numbers next to each word indicate how characteristic that word is of the topic. Higher weights mean the word is more central to that theme.</p>
+            <ul>
+                <li><strong>High weight (0.8+):</strong> Core concept that defines this topic</li>
+                <li><strong>Medium weight (0.4-0.7):</strong> Important supporting concept</li>
+                <li><strong>Low weight (0.1-0.3):</strong> Related but peripheral concept</li>
+            </ul>
+        </div>
+
+        <div class="step">
+            <h3>Topic Strength Indicates Prevalence</h3>
+            <p>The strength percentage shows how dominant each topic is in the overall dataset. Stronger topics appear in more documents and represent more widespread practices.</p>
+            <ul>
+                <li><strong>High strength:</strong> Nearly universal practices (most projects include this)</li>
+                <li><strong>Medium strength:</strong> Common but not universal patterns</li>
+                <li><strong>Low strength:</strong> Specialized or emerging practices</li>
+            </ul>
+        </div>
+
+        <div class="step">
+            <h3>What This Means for You</h3>
+            <p>These patterns help you understand:</p>
+            <ul>
+                <li><strong>Industry Standards:</strong> What most developers include in their Claude documentation</li>
+                <li><strong>Best Practices:</strong> Common approaches that work across many projects</li>
+                <li><strong>Documentation Gaps:</strong> Areas where your Claude.md might be missing important elements</li>
+                <li><strong>Emerging Trends:</strong> New patterns in how teams integrate Claude into their workflows</li>
+            </ul>
+        </div>
+
+        <h2>🔄 How the Analysis Works</h2>
         
         <div class="step">
             <h3>Step 1: Data Collection</h3>

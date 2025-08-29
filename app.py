@@ -578,56 +578,374 @@ def perform_lda_and_visualize(documents, num_topics=5):
         # Get feature names
         feature_names = vectorizer.get_feature_names_out()
         
-        # Create simple HTML visualization
-        create_simple_visualization(lda_model, feature_names, num_topics)
+        # Calculate analysis stats for visualization
+        analysis_stats = {
+            'total_documents': len(documents),
+            'processed_documents': len(processed_docs),
+            'vocabulary_size': len(feature_names),
+            'topics_discovered': num_topics
+        }
+        
+        # Create enhanced HTML visualization
+        create_enhanced_visualization(lda_model, feature_names, num_topics, analysis_stats)
         print(f"LDA visualization saved to {VIS_HTML_PATH}")
         return True
     except Exception as e:
         print(f"Error during LDA modeling or visualization: {e}")
         return False
 
-def create_simple_visualization(lda_model, feature_names, num_topics):
+def generate_topic_label(top_words):
     """
-    Creates a simple HTML visualization of LDA topics.
+    Generate a semantic label for a topic based on its top words.
     """
+    # Simple heuristic: look for common patterns in Claude.md files
+    top_3_words = top_words[:3]
+    
+    # Check for common Claude.md themes
+    if any(word in top_3_words for word in ['assistant', 'claude', 'ai']):
+        return "AI Assistant Configuration"
+    elif any(word in top_3_words for word in ['project', 'repo', 'repository']):
+        return "Project Structure"
+    elif any(word in top_3_words for word in ['code', 'function', 'class']):
+        return "Code Guidelines"
+    elif any(word in top_3_words for word in ['file', 'directory', 'folder']):
+        return "File Management"
+    elif any(word in top_3_words for word in ['test', 'testing', 'spec']):
+        return "Testing & Quality"
+    elif any(word in top_3_words for word in ['data', 'database', 'api']):
+        return "Data & APIs"
+    elif any(word in top_3_words for word in ['user', 'interface', 'ui']):
+        return "User Interface"
+    elif any(word in top_3_words for word in ['deploy', 'build', 'production']):
+        return "Deployment & Build"
+    elif any(word in top_3_words for word in ['doc', 'documentation', 'readme']):
+        return "Documentation"
+    elif any(word in top_3_words for word in ['style', 'format', 'convention']):
+        return "Code Style"
+    else:
+        # Fallback: use the top 2 words
+        return f"{top_words[0].title()} & {top_words[1].title()}"
+
+def create_enhanced_visualization(lda_model, feature_names, num_topics, analysis_stats):
+    """
+    Creates an enhanced HTML visualization of LDA topics with better clarity.
+    """
+    # Calculate topic strengths for relative sizing
+    topic_strengths = []
+    for topic in lda_model.components_:
+        strength = topic.sum()  # Sum of all word weights in topic
+        topic_strengths.append(strength)
+    
+    # Normalize strengths to 0.6-1.0 range for visual scaling
+    max_strength = max(topic_strengths)
+    min_strength = min(topic_strengths)
+    normalized_strengths = []
+    for strength in topic_strengths:
+        if max_strength == min_strength:
+            normalized_strengths.append(1.0)
+        else:
+            normalized = 0.6 + 0.4 * ((strength - min_strength) / (max_strength - min_strength))
+            normalized_strengths.append(normalized)
+    
     html_content = """
     <!DOCTYPE html>
     <html>
     <head>
-        <title>LDA Topic Analysis</title>
+        <title>Claude.md Topic Analysis - Enhanced Visualization</title>
+        <meta charset="UTF-8">
         <style>
-            body { font-family: Arial, sans-serif; margin: 20px; background-color: #f5f5f5; }
-            .container { max-width: 1000px; margin: auto; background: white; padding: 20px; border-radius: 8px; }
-            .topic { margin: 20px 0; padding: 15px; border: 1px solid #ddd; border-radius: 5px; background-color: #fafafa; }
-            .topic-title { color: #2c3e50; font-size: 18px; font-weight: bold; margin-bottom: 10px; }
-            .word { display: inline-block; margin: 2px 5px; padding: 3px 8px; background-color: #3498db; color: white; border-radius: 3px; font-size: 12px; }
-            .word-weight { opacity: 0.8; font-size: 10px; }
+            * { box-sizing: border-box; }
+            body { 
+                font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; 
+                margin: 0; padding: 20px; 
+                background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+                min-height: 100vh;
+                color: #333;
+            }
+            .container { 
+                max-width: 1200px; 
+                margin: 0 auto; 
+                background: white; 
+                border-radius: 12px; 
+                box-shadow: 0 20px 40px rgba(0,0,0,0.1);
+                overflow: hidden;
+            }
+            .header {
+                background: linear-gradient(135deg, #2c3e50, #34495e);
+                color: white;
+                padding: 30px;
+                text-align: center;
+            }
+            .header h1 { margin: 0 0 10px 0; font-size: 2.2em; font-weight: 300; }
+            .header .subtitle { opacity: 0.9; font-size: 1.1em; margin-bottom: 20px; }
+            .stats-grid {
+                display: grid;
+                grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+                gap: 15px;
+                margin-top: 20px;
+            }
+            .stat-card {
+                background: rgba(255,255,255,0.1);
+                padding: 15px;
+                border-radius: 8px;
+                text-align: center;
+            }
+            .stat-number { font-size: 2em; font-weight: bold; display: block; }
+            .stat-label { opacity: 0.8; font-size: 0.9em; }
+            .content { padding: 30px; }
+            .topics-intro { 
+                margin-bottom: 30px; 
+                padding: 20px;
+                background: #f8f9fa;
+                border-radius: 8px;
+                border-left: 4px solid #667eea;
+            }
+            .topics-grid {
+                display: grid;
+                grid-template-columns: repeat(auto-fit, minmax(450px, 1fr));
+                gap: 25px;
+                margin-top: 30px;
+            }
+            .topic-card { 
+                padding: 25px; 
+                border-radius: 12px; 
+                background: white;
+                box-shadow: 0 4px 15px rgba(0,0,0,0.08);
+                border: 1px solid #e9ecef;
+                transition: all 0.3s ease;
+                position: relative;
+                overflow: hidden;
+            }
+            .topic-card:hover {
+                transform: translateY(-2px);
+                box-shadow: 0 8px 25px rgba(0,0,0,0.15);
+            }
+            .topic-card::before {
+                content: '';
+                position: absolute;
+                top: 0; left: 0; right: 0;
+                height: 4px;
+                background: linear-gradient(90deg, var(--topic-color), var(--topic-color-light));
+            }
+            .topic-header {
+                display: flex;
+                align-items: center;
+                justify-content: space-between;
+                margin-bottom: 20px;
+            }
+            .topic-label { 
+                font-size: 1.3em; 
+                font-weight: 600; 
+                color: #2c3e50;
+                margin: 0;
+            }
+            .topic-number {
+                background: var(--topic-color);
+                color: white;
+                width: 32px; height: 32px;
+                border-radius: 50%;
+                display: flex;
+                align-items: center;
+                justify-content: center;
+                font-weight: bold;
+                font-size: 0.9em;
+            }
+            .words-container {
+                display: flex;
+                flex-wrap: wrap;
+                gap: 8px;
+                margin-bottom: 15px;
+            }
+            .word-tag { 
+                display: inline-flex;
+                align-items: center;
+                padding: 8px 12px; 
+                background: var(--topic-color);
+                color: white; 
+                border-radius: 20px; 
+                font-weight: 500;
+                position: relative;
+                transition: all 0.2s ease;
+            }
+            .word-tag:hover {
+                transform: scale(1.05);
+                box-shadow: 0 2px 8px rgba(0,0,0,0.2);
+            }
+            .word-primary { font-size: 1em; opacity: 1; }
+            .word-secondary { font-size: 0.9em; opacity: 0.9; }
+            .word-tertiary { font-size: 0.85em; opacity: 0.8; }
+            .topic-strength {
+                font-size: 0.85em;
+                color: #6c757d;
+                font-weight: 500;
+            }
+            .strength-bar {
+                width: 100%;
+                height: 4px;
+                background: #e9ecef;
+                border-radius: 2px;
+                margin-top: 8px;
+                overflow: hidden;
+            }
+            .strength-fill {
+                height: 100%;
+                background: var(--topic-color);
+                border-radius: 2px;
+                transition: width 1s ease-out;
+            }
+            .footer { 
+                margin-top: 40px; 
+                padding: 30px; 
+                background: #f8f9fa; 
+                text-align: center;
+                border-top: 1px solid #e9ecef;
+            }
+            .footer-content {
+                max-width: 600px;
+                margin: 0 auto;
+            }
+            .how-it-works-link {
+                display: inline-block;
+                margin-top: 15px;
+                padding: 10px 20px;
+                background: #667eea;
+                color: white;
+                text-decoration: none;
+                border-radius: 6px;
+                font-weight: 500;
+                transition: background 0.3s ease;
+            }
+            .how-it-works-link:hover {
+                background: #5a67d8;
+            }
         </style>
     </head>
     <body>
         <div class="container">
-            <h1>Topic Analysis Results</h1>
-            <p>Discovered topics and their most representative words:</p>
+            <div class="header">
+                <h1>Claude.md Topic Analysis</h1>
+                <div class="subtitle">Discovering patterns in Claude documentation across GitHub repositories</div>
+                <div class="stats-grid">
     """
     
-    # Add topics
+    # Add analysis statistics
+    html_content += f"""
+                    <div class="stat-card">
+                        <span class="stat-number">{analysis_stats['total_documents']:,}</span>
+                        <span class="stat-label">Files Found</span>
+                    </div>
+                    <div class="stat-card">
+                        <span class="stat-number">{analysis_stats['processed_documents']:,}</span>
+                        <span class="stat-label">Files Analyzed</span>
+                    </div>
+                    <div class="stat-card">
+                        <span class="stat-number">{analysis_stats['vocabulary_size']:,}</span>
+                        <span class="stat-label">Unique Words</span>
+                    </div>
+                    <div class="stat-card">
+                        <span class="stat-number">{analysis_stats['topics_discovered']}</span>
+                        <span class="stat-label">Topics Discovered</span>
+                    </div>
+    """
+    
+    html_content += """
+                </div>
+            </div>
+            <div class="content">
+                <div class="topics-intro">
+                    <h3 style="margin-top: 0; color: #2c3e50;">What are these topics?</h3>
+                    <p style="margin-bottom: 0; line-height: 1.6;">
+                        Each topic represents a common theme found across Claude.md files. The words shown are the most characteristic 
+                        terms for that topic, sized by their importance. Topics with stronger presence in the dataset appear more prominent.
+                    </p>
+                </div>
+                <div class="topics-grid">
+    """
+    
+    # Define color palette for topics
+    colors = [
+        ('#667eea', '#764ba2'),  # Purple-blue
+        ('#f093fb', '#f5576c'),  # Pink-red
+        ('#4facfe', '#00f2fe'),  # Blue-cyan
+        ('#43e97b', '#38f9d7'),  # Green-teal
+        ('#fa709a', '#fee140'),  # Pink-yellow
+        ('#a8edea', '#fed6e3'),  # Light teal-pink
+        ('#ff9a9e', '#fecfef'),  # Light pink
+        ('#a18cd1', '#fbc2eb'),  # Purple-pink
+    ]
+    
+    # Add topics with enhanced styling
     for topic_idx, topic in enumerate(lda_model.components_):
-        top_words_idx = topic.argsort()[-10:][::-1]
+        top_words_idx = topic.argsort()[-12:][::-1]  # Get top 12 words
         top_words = [feature_names[i] for i in top_words_idx]
         weights = [topic[i] for i in top_words_idx]
         
-        html_content += f'<div class="topic"><div class="topic-title">Topic {topic_idx + 1}</div>'
-        for word, weight in zip(top_words, weights):
-            html_content += f'<span class="word">{word} <span class="word-weight">({weight:.3f})</span></span>'
-        html_content += '</div>'
+        # Generate semantic label
+        topic_label = generate_topic_label(top_words)
+        
+        # Get colors for this topic
+        color_primary, color_secondary = colors[topic_idx % len(colors)]
+        
+        # Calculate relative strength
+        strength_percent = int(normalized_strengths[topic_idx] * 100)
+        
+        html_content += f"""
+                <div class="topic-card" style="--topic-color: {color_primary}; --topic-color-light: {color_secondary};">
+                    <div class="topic-header">
+                        <h3 class="topic-label">{topic_label}</h3>
+                        <div class="topic-number">{topic_idx + 1}</div>
+                    </div>
+                    <div class="words-container">
+        """
+        
+        # Add words with different styling based on importance
+        for i, (word, weight) in enumerate(zip(top_words, weights)):
+            if i < 3:
+                css_class = "word-tag word-primary"
+            elif i < 6:
+                css_class = "word-tag word-secondary"
+            else:
+                css_class = "word-tag word-tertiary"
+            
+            html_content += f'<span class="{css_class}">{word}</span>'
+        
+        html_content += f"""
+                    </div>
+                    <div class="topic-strength">
+                        Topic Strength: {strength_percent}%
+                        <div class="strength-bar">
+                            <div class="strength-fill" style="width: {strength_percent}%;"></div>
+                        </div>
+                    </div>
+                </div>
+        """
     
     html_content += """
-            <div style="margin-top: 40px; padding: 20px; background-color: #e9ecef; border-radius: 5px; font-size: 12px; color: #6c757d; text-align: center;">
-                <strong>Privacy Notice:</strong> No data is saved or retained by this application. All analysis is performed in memory and temporary files are cleaned up after processing.
-                <br><br>
-                <a href="/how-it-works" style="color: #007bff; text-decoration: none; font-weight: bold;">How it works →</a>
+                </div>
+            </div>
+            <div class="footer">
+                <div class="footer-content">
+                    <strong>Privacy Notice:</strong> No data is saved or retained by this application. 
+                    All analysis is performed in memory and temporary files are cleaned up after processing.
+                    <br>
+                    <a href="/how-it-works" class="how-it-works-link">How it works →</a>
+                </div>
             </div>
         </div>
+        <script>
+            // Add simple animations
+            document.addEventListener('DOMContentLoaded', function() {
+                // Animate strength bars
+                setTimeout(function() {
+                    const strengthBars = document.querySelectorAll('.strength-fill');
+                    strengthBars.forEach(bar => {
+                        const width = bar.style.width;
+                        bar.style.width = '0%';
+                        setTimeout(() => bar.style.width = width, 100);
+                    });
+                }, 500);
+            });
+        </script>
     </body>
     </html>
     """
@@ -640,6 +958,19 @@ def create_simple_visualization(lda_model, feature_names, num_topics):
     except Exception as e:
         print(f"Error writing visualization file: {e}")
         raise
+
+def create_simple_visualization(lda_model, feature_names, num_topics):
+    """
+    Creates a simple HTML visualization of LDA topics (legacy function for backward compatibility).
+    """
+    # For backward compatibility, we'll just call the enhanced version with default stats
+    analysis_stats = {
+        'total_documents': 0,
+        'processed_documents': 0,
+        'vocabulary_size': len(feature_names),
+        'topics_discovered': num_topics
+    }
+    create_enhanced_visualization(lda_model, feature_names, num_topics, analysis_stats)
 
 # --- Flask Routes ---
 
