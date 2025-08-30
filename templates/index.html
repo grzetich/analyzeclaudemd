@@ -3,135 +3,424 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Claude.md Analyzer</title>
+    <title>Claude.md Topic Analyzer</title>
     <link rel="icon" href="{{ url_for('static', filename='favicon.ico') }}" type="image/svg+xml">
-    <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
     <style>
+        * { box-sizing: border-box; margin: 0; padding: 0; }
+        
         body {
-            font-family: Arial, sans-serif;
-            margin: 20px;
-            background-color: #f4f4f4;
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
             color: #333;
         }
-        .container {
-            max-width: 900px;
-            margin: auto;
-            background: #fff;
-            padding: 30px;
-            border-radius: 8px;
-            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
-        }
-        h1 {
-            color: #0056b3;
-            text-align: center;
-            margin-bottom: 30px;
-        }
-        .controls {
-            display: flex;
-            justify-content: center;
-            gap: 15px;
-            margin-bottom: 30px;
-        }
-        .button {
-            padding: 12px 25px;
-            font-size: 16px;
-            border: none;
-            border-radius: 5px;
-            cursor: pointer;
-            transition: background-color 0.3s ease;
-        }
-        .button-primary {
-            background-color: #007bff;
+
+        .hero {
+            background: linear-gradient(135deg, #2c3e50, #34495e);
             color: white;
-        }
-        .button-primary:hover {
-            background-color: #0056b3;
-        }
-        .button-secondary {
-            background-color: #6c757d;
-            color: white;
-        }
-        .button-secondary:hover {
-            background-color: #5a6268;
-        }
-        #status-message {
+            padding: 60px 20px;
             text-align: center;
-            margin-top: 20px;
+        }
+
+        .hero h1 {
+            font-size: 3em;
+            font-weight: 300;
+            margin-bottom: 20px;
+            text-shadow: 2px 2px 4px rgba(0,0,0,0.3);
+        }
+
+        .hero .subtitle {
+            font-size: 1.3em;
+            opacity: 0.9;
+            margin-bottom: 40px;
+            max-width: 800px;
+            margin-left: auto;
+            margin-right: auto;
+        }
+
+        .stats-overview {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 20px;
+            max-width: 800px;
+            margin: 0 auto;
+        }
+
+        .stat-card {
+            background: rgba(255,255,255,0.1);
+            padding: 20px;
+            border-radius: 10px;
+            text-align: center;
+            backdrop-filter: blur(10px);
+        }
+
+        .stat-number {
+            font-size: 2.5em;
             font-weight: bold;
-            padding: 10px;
-            border-radius: 5px;
+            display: block;
+            color: #4fc3f7;
         }
+
+        .stat-label {
+            opacity: 0.8;
+            margin-top: 8px;
+        }
+
+        .main-content {
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 40px 20px;
+        }
+
+        .status-section {
+            background: white;
+            border-radius: 12px;
+            padding: 30px;
+            margin-bottom: 30px;
+            box-shadow: 0 4px 20px rgba(0,0,0,0.1);
+            text-align: center;
+        }
+
+        .status-message {
+            font-size: 1.1em;
+            font-weight: 500;
+            padding: 15px 25px;
+            border-radius: 8px;
+            margin-bottom: 20px;
+            display: inline-block;
+        }
+
         .status-success {
-            background-color: #d4edda;
+            background: linear-gradient(135deg, #d4edda, #c3e6cb);
             color: #155724;
             border: 1px solid #c3e6cb;
         }
+
         .status-warning {
-            background-color: #fff3cd;
+            background: linear-gradient(135deg, #fff3cd, #ffeeba);
             color: #856404;
             border: 1px solid #ffeeba;
         }
+
         .status-error {
-            background-color: #f8d7da;
+            background: linear-gradient(135deg, #f8d7da, #f5c6cb);
             color: #721c24;
             border: 1px solid #f5c6cb;
         }
-        .instructions {
-            background-color: #e9ecef;
-            padding: 15px;
-            border-radius: 5px;
-            margin-top: 25px;
-            font-size: 0.9em;
-            color: #495057;
+
+        .view-options {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+            gap: 20px;
+            margin: 30px 0;
         }
-        .instructions strong {
-            color: #0056b3;
+
+        .view-card {
+            background: white;
+            border-radius: 12px;
+            padding: 25px;
+            box-shadow: 0 4px 15px rgba(0,0,0,0.1);
+            transition: transform 0.3s ease, box-shadow 0.3s ease;
+            text-decoration: none;
+            color: inherit;
+        }
+
+        .view-card:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 8px 25px rgba(0,0,0,0.15);
+            text-decoration: none;
+            color: inherit;
+        }
+
+        .view-card h3 {
+            color: #667eea;
+            font-size: 1.4em;
+            margin-bottom: 15px;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .view-card p {
+            color: #666;
+            line-height: 1.6;
+            margin-bottom: 15px;
+        }
+
+        .view-badge {
+            display: inline-block;
+            background: #667eea;
+            color: white;
+            padding: 4px 12px;
+            border-radius: 20px;
+            font-size: 0.85em;
+            font-weight: 500;
+        }
+
+        .visualization-section {
+            background: white;
+            border-radius: 12px;
+            box-shadow: 0 4px 20px rgba(0,0,0,0.1);
+            overflow: hidden;
+            margin-top: 30px;
+            display: none;
+        }
+
+        .viz-header {
+            background: linear-gradient(135deg, #667eea, #764ba2);
+            color: white;
+            padding: 20px;
+            text-align: center;
+        }
+
+        .viz-content {
+            min-height: 600px;
+        }
+
+        .footer-info {
+            background: rgba(255,255,255,0.9);
+            border-radius: 12px;
+            padding: 30px;
+            margin-top: 40px;
+            text-align: center;
+        }
+
+        .footer-info h3 {
+            color: #2c3e50;
+            margin-bottom: 15px;
+        }
+
+        .footer-links {
+            display: flex;
+            justify-content: center;
+            gap: 20px;
+            margin-top: 20px;
+        }
+
+        .footer-links a {
+            color: #667eea;
+            text-decoration: none;
+            font-weight: 500;
+            padding: 8px 16px;
+            border-radius: 6px;
+            transition: background 0.3s ease;
+        }
+
+        .footer-links a:hover {
+            background: rgba(102, 126, 234, 0.1);
+        }
+
+        .loading-spinner {
+            display: inline-block;
+            width: 20px;
+            height: 20px;
+            border: 2px solid #f3f3f3;
+            border-top: 2px solid #667eea;
+            border-radius: 50%;
+            animation: spin 1s linear infinite;
+            margin-right: 10px;
+        }
+
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+
+        @media (max-width: 768px) {
+            .hero h1 { font-size: 2em; }
+            .hero .subtitle { font-size: 1.1em; }
+            .stats-overview { grid-template-columns: 1fr; }
+            .view-options { grid-template-columns: 1fr; }
+            .footer-links { flex-direction: column; gap: 10px; }
         }
     </style>
 </head>
 <body>
-    <div class="container">
-        <h1>Claude.md Topic Analyzer & Visualizer</h1>
-        <div id="status-message">Analysis starting automatically...</div>
-        <div id="visualization-container" style="display: none;">
-            <iframe id="viz-frame" src="" width="100%" height="600" style="border: none; border-radius: 8px;"></iframe>
+    <div class="hero">
+        <h1>Claude.md Topic Analyzer</h1>
+        <div class="subtitle">
+            Discovering patterns in Claude documentation across GitHub repositories using advanced topic modeling
+        </div>
+        <div class="stats-overview" id="statsGrid">
+            <div class="stat-card">
+                <span class="stat-number" id="fileCount">--</span>
+                <div class="stat-label">Files Analyzed</div>
+            </div>
+            <div class="stat-card">
+                <span class="stat-number" id="topicCount">--</span>
+                <div class="stat-label">Topics Discovered</div>
+            </div>
+            <div class="stat-card">
+                <span class="stat-number" id="vocabCount">--</span>
+                <div class="stat-label">Unique Words</div>
+            </div>
+            <div class="stat-card">
+                <span class="stat-number" id="repoCount">500+</span>
+                <div class="stat-label">GitHub Repositories</div>
+            </div>
+        </div>
+    </div>
+
+    <div class="main-content">
+        <div class="status-section">
+            <div id="status-message" class="status-message status-warning">
+                <div class="loading-spinner"></div>
+                Loading analysis results...
+            </div>
+        </div>
+
+        <div class="view-options">
+            <a href="#what-it-means" class="view-card" onclick="showWhatItMeans(); return false;">
+                <h3>🎯 What It Means</h3>
+                <p>Understand what the discovered topics reveal about Claude usage patterns. Learn how to interpret topic strength, word importance, and what these patterns mean for your projects.</p>
+                <span class="view-badge">Start Here</span>
+            </a>
+
+            <a href="/how-it-works" class="view-card">
+                <h3>📖 How It Works</h3>
+                <p>Dive into the technical details of the analysis process. Learn about topic modeling, LDA algorithms, and how we collect and process Claude.md files from GitHub.</p>
+                <span class="view-badge">Technical</span>
+            </a>
+        </div>
+
+        <div class="visualization-section" id="visualizationSection">
+            <div class="viz-header">
+                <h3>Topic Visualization</h3>
+            </div>
+            <div class="viz-content" id="vizContent">
+                <!-- Visualization content will be loaded here -->
+            </div>
+        </div>
+
+        <div class="footer-info">
+            <h3>About This Analysis</h3>
+            <p>
+                This application analyzes <code>claude.md</code> files from public GitHub repositories to discover common themes and patterns in Claude AI documentation. 
+                Using Latent Dirichlet Allocation (LDA), we identify topics that represent how developers document their Claude integrations.
+            </p>
+            <div class="footer-links">
+                <a href="#what-it-means" onclick="showWhatItMeans(); return false;">What It Means</a>
+                <a href="/how-it-works">How It Works</a>
+            </div>
+            <p style="margin-top: 20px; font-size: 0.9em; color: #666;">
+                <strong>Privacy Notice:</strong> No data is stored. All analysis is performed in memory and temporary files are cleaned up after processing.
+            </p>
         </div>
     </div>
 
     <script>
+        let analysisData = null;
+
+        function showWhatItMeans() {
+            const vizSection = document.getElementById('visualizationSection');
+            const vizContent = document.getElementById('vizContent');
+            const vizHeader = vizSection.querySelector('.viz-header h3');
+            
+            vizHeader.textContent = 'What the Analysis Reveals';
+            vizSection.style.display = 'block';
+            
+            vizContent.innerHTML = `
+                <div style="padding: 40px;">
+                    <div style="max-width: 800px; margin: 0 auto;">
+                        <h3 style="color: #2c3e50; margin-bottom: 20px;">📊 Understanding the Topics</h3>
+                        <p style="line-height: 1.6; margin-bottom: 20px;">
+                            Each topic represents a distinct pattern of words that frequently appear together across Claude.md files. 
+                            These aren't arbitrary groupings—they reveal how developers actually use and document Claude in real projects.
+                        </p>
+                        
+                        <div style="background: #f8f9fa; padding: 20px; border-radius: 8px; margin: 20px 0; border-left: 4px solid #667eea;">
+                            <h4 style="color: #667eea; margin-bottom: 15px;">🎯 What Strong Topics Tell You</h4>
+                            <ul style="line-height: 1.8;">
+                                <li><strong>High Strength (80%+):</strong> Nearly universal practices - most projects include this</li>
+                                <li><strong>Medium Strength (50-79%):</strong> Common but not universal patterns</li>
+                                <li><strong>Low Strength (20-49%):</strong> Specialized or emerging practices</li>
+                            </ul>
+                        </div>
+
+                        <h3 style="color: #2c3e50; margin: 30px 0 20px;">🔍 Key Patterns Discovered</h3>
+                        <div style="display: grid; gap: 15px;">
+                            <div style="background: #e8f4f8; padding: 15px; border-radius: 8px;">
+                                <strong style="color: #2980b9;">AI Assistant Instructions:</strong> Most projects focus on configuring Claude's behavior through system prompts and role definitions.
+                            </div>
+                            <div style="background: #f0f8e8; padding: 15px; border-radius: 8px;">
+                                <strong style="color: #27ae60;">Project Structure & Files:</strong> Teams document how Claude should understand their codebase organization.
+                            </div>
+                            <div style="background: #fef9e7; padding: 15px; border-radius: 8px;">
+                                <strong style="color: #f39c12;">Code Quality & Style:</strong> Emphasis on maintaining consistent coding standards with Claude's help.
+                            </div>
+                            <div style="background: #f4e8f8; padding: 15px; border-radius: 8px;">
+                                <strong style="color: #8e44ad;">Documentation & Usage:</strong> Clear patterns around how to document Claude integration for team members.
+                            </div>
+                            <div style="background: #fdf2f2; padding: 15px; border-radius: 8px;">
+                                <strong style="color: #e74c3c;">Testing & Validation:</strong> Growing trend of including testing guidelines for Claude-assisted development.
+                            </div>
+                        </div>
+
+                        <h3 style="color: #2c3e50; margin: 30px 0 20px;">💡 What This Means for Your Projects</h3>
+                        <div style="background: #e9ecef; padding: 20px; border-radius: 8px;">
+                            <ul style="line-height: 1.8;">
+                                <li><strong>Industry Standards:</strong> See what most developers include in their Claude documentation</li>
+                                <li><strong>Best Practices:</strong> Identify common approaches that work across many projects</li>
+                                <li><strong>Documentation Gaps:</strong> Find areas where your Claude.md might be missing important elements</li>
+                                <li><strong>Emerging Trends:</strong> Spot new patterns in how teams integrate Claude into their workflows</li>
+                            </ul>
+                        </div>
+                    </div>
+                </div>
+            `;
+            
+            // Scroll to content
+            vizSection.scrollIntoView({ behavior: 'smooth' });
+        }
+
         async function checkAnalysis() {
             const statusDiv = document.getElementById('status-message');
-            const vizContainer = document.getElementById('visualization-container');
-            const vizFrame = document.getElementById('viz-frame');
             
-            statusDiv.className = ''; // Clear previous classes
-            statusDiv.textContent = 'Loading analysis results...';
-            statusDiv.classList.add('status-warning');
-
             try {
                 const response = await fetch('/analyze', { method: 'POST' });
                 const data = await response.json();
-                  
-                statusDiv.textContent = data.message;
+                analysisData = data;
+                
+                // Update status message
+                statusDiv.innerHTML = data.message;
+                statusDiv.className = 'status-message';
+                
                 if (data.status === 'success') {
                     statusDiv.classList.add('status-success');
-                    // Auto-display visualization
-                    vizFrame.src = '/visualization';
-                    vizContainer.style.display = 'block';
-                    statusDiv.textContent += ' Visualization loaded below.';
+                    
+                    // Load statistics if available
+                    await loadStatistics();
+                    
                 } else if (data.status === 'warning') {
                     statusDiv.classList.add('status-warning');
+                    statusDiv.innerHTML = '<div class="loading-spinner"></div>' + data.message;
+                    
                     // If analysis is running, poll for updates
-                    if (data.message.includes('running in the background') || data.message.includes('started in background')) {
-                        setTimeout(checkAnalysis, 30000); // Check again in 30 seconds
+                    if (data.message.includes('running') || data.message.includes('started')) {
+                        setTimeout(checkAnalysis, 15000); // Check again in 15 seconds
                     }
                 } else {
                     statusDiv.classList.add('status-error');
                 }
             } catch (error) {
                 console.error('Error during analysis:', error);
-                statusDiv.textContent = 'An error occurred while checking analysis status. Check console for details.';
-                statusDiv.classList.add('status-error');
+                statusDiv.innerHTML = 'Connection error. Please refresh the page.';
+                statusDiv.className = 'status-message status-error';
+            }
+        }
+
+        async function loadStatistics() {
+            try {
+                const response = await fetch('/api/topics-3d');
+                const data = await response.json();
+                
+                if (data && data.metadata) {
+                    document.getElementById('fileCount').textContent = data.metadata.total_documents.toLocaleString();
+                    document.getElementById('topicCount').textContent = data.metadata.topics_discovered;
+                    document.getElementById('vocabCount').textContent = data.metadata.vocabulary_size.toLocaleString();
+                }
+            } catch (error) {
+                console.error('Error loading statistics:', error);
             }
         }
 

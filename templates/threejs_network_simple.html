@@ -1,0 +1,438 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>3D Topic Network - Simple Demo</title>
+    <meta charset="UTF-8">
+    <style>
+        body { 
+            margin: 0; 
+            padding: 0; 
+            background: #0a0a0a; 
+            color: white; 
+            font-family: Arial, sans-serif; 
+            overflow: hidden;
+        }
+        #container { width: 100vw; height: 100vh; }
+        .info {
+            position: absolute;
+            top: 10px;
+            left: 10px;
+            background: rgba(0,0,0,0.8);
+            padding: 15px;
+            border-radius: 8px;
+            max-width: 300px;
+            z-index: 100;
+        }
+        .controls {
+            position: absolute;
+            top: 10px;
+            right: 10px;
+            background: rgba(0,0,0,0.8);
+            padding: 15px;
+            border-radius: 8px;
+            z-index: 100;
+        }
+        button {
+            background: #4a90e2;
+            border: none;
+            color: white;
+            padding: 8px 12px;
+            margin: 2px;
+            border-radius: 4px;
+            cursor: pointer;
+        }
+        button:hover { background: #357abd; }
+    </style>
+</head>
+<body>
+    <div id="container"></div>
+    
+    <div class="info">
+        <h3>3D Topic Network</h3>
+        <p><strong>Mouse:</strong> Drag to rotate, scroll to zoom</p>
+        <p><strong>Topics:</strong> Large spheres connected by relationships</p>
+        <p><strong>Words:</strong> Small spheres orbiting topics</p>
+        <div id="topic-details">Hover over a topic to see details</div>
+    </div>
+    
+    <div class="controls">
+        <button onclick="changeLayout('network')">Network</button>
+        <button onclick="changeLayout('galaxy')">Galaxy</button>
+        <button onclick="changeLayout('cloud')">Cloud</button>
+        <button onclick="toggleAnimation()">Toggle Animation</button>
+        <button onclick="resetView()">Reset View</button>
+    </div>
+
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+    <script>
+        let scene, camera, renderer, controls;
+        let topicMeshes = [], wordMeshes = [];
+        let animateObjects = true;
+        let currentLayout = 'network';
+        
+        // Will be loaded from API
+        let topics = [];
+
+        async function loadTopicData() {
+            try {
+                const response = await fetch('/api/topics-3d');
+                const data = await response.json();
+                
+                // Convert API data to Three.js format
+                topics = data.topics.map(topic => ({
+                    name: topic.label,
+                    words: topic.words.slice(0, 6), // Limit for performance
+                    color: parseInt(topic.color.replace('#', '0x')),
+                    strength: topic.strength / 100 // Convert percentage to 0-1
+                }));
+                
+                // Update info panel with real metadata
+                document.querySelector('.info p:last-child').innerHTML = 
+                    `<strong>Analysis:</strong> ${data.metadata.total_documents} files, ${data.metadata.topics_discovered} topics${data.metadata.real_data ? ' (Real Data)' : ' (Sample)'}`;
+                
+                return true;
+            } catch (error) {
+                console.error('Error loading topic data:', error);
+                // Fallback to sample data
+                topics = [
+                    { name: "AI Configuration", words: ["assistant", "claude", "context"], color: 0x4fc3f7, strength: 0.9 },
+                    { name: "Project Setup", words: ["project", "file", "structure"], color: 0x66bb6a, strength: 0.8 },
+                    { name: "Code Style", words: ["code", "format", "convention"], color: 0xffa726, strength: 0.7 },
+                    { name: "Testing", words: ["test", "quality", "validation"], color: 0xef5350, strength: 0.6 },
+                    { name: "Documentation", words: ["docs", "readme", "guide"], color: 0xab47bc, strength: 0.5 }
+                ];
+                return false;
+            }
+        }
+
+        async function init() {
+            // Load topic data first
+            await loadTopicData();
+            
+            // Scene
+            scene = new THREE.Scene();
+            scene.background = new THREE.Color(0x0a0a0a);
+
+            // Camera
+            camera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 0.1, 1000);
+            camera.position.set(0, 0, 30);
+
+            // Renderer
+            renderer = new THREE.WebGLRenderer({ antialias: true });
+            renderer.setSize(window.innerWidth, window.innerHeight);
+            document.getElementById('container').appendChild(renderer.domElement);
+
+            // Simple mouse controls
+            setupMouseControls();
+
+            // Lighting
+            const ambientLight = new THREE.AmbientLight(0x404040, 0.4);
+            scene.add(ambientLight);
+            
+            const pointLight = new THREE.PointLight(0xffffff, 0.8, 100);
+            pointLight.position.set(10, 10, 10);
+            scene.add(pointLight);
+
+            // Create visualization
+            createNetworkLayout();
+
+            // Start animation
+            animate();
+        }
+
+        function setupMouseControls() {
+            let isDragging = false;
+            let previousMousePosition = { x: 0, y: 0 };
+
+            renderer.domElement.addEventListener('mousedown', (e) => {
+                isDragging = true;
+                previousMousePosition.x = e.clientX;
+                previousMousePosition.y = e.clientY;
+            });
+
+            renderer.domElement.addEventListener('mousemove', (e) => {
+                if (!isDragging) return;
+
+                const deltaX = e.clientX - previousMousePosition.x;
+                const deltaY = e.clientY - previousMousePosition.y;
+
+                // Rotate scene
+                scene.rotation.y += deltaX * 0.005;
+                scene.rotation.x += deltaY * 0.005;
+
+                previousMousePosition.x = e.clientX;
+                previousMousePosition.y = e.clientY;
+            });
+
+            document.addEventListener('mouseup', () => {
+                isDragging = false;
+            });
+
+            // Zoom with mouse wheel
+            renderer.domElement.addEventListener('wheel', (e) => {
+                camera.position.z += e.deltaY * 0.01;
+                camera.position.z = Math.max(5, Math.min(50, camera.position.z));
+            });
+        }
+
+        function createNetworkLayout() {
+            clearMeshes();
+            
+            topics.forEach((topic, index) => {
+                // Position topics in a circle
+                const angle = (index / topics.length) * Math.PI * 2;
+                const radius = 12;
+                const x = Math.cos(angle) * radius;
+                const z = Math.sin(angle) * radius;
+                const y = (Math.random() - 0.5) * 4;
+
+                // Create topic sphere
+                const topicGeometry = new THREE.SphereGeometry(topic.strength * 2, 16, 16);
+                const topicMaterial = new THREE.MeshPhongMaterial({ 
+                    color: topic.color,
+                    transparent: true,
+                    opacity: 0.8
+                });
+                const topicMesh = new THREE.Mesh(topicGeometry, topicMaterial);
+                topicMesh.position.set(x, y, z);
+                topicMesh.userData = { topic, type: 'topic' };
+                
+                scene.add(topicMesh);
+                topicMeshes.push(topicMesh);
+
+                // Create word satellites
+                topic.words.forEach((word, wordIndex) => {
+                    const wordAngle = (wordIndex / topic.words.length) * Math.PI * 2;
+                    const wordRadius = 3 + Math.random() * 2;
+                    
+                    const wordGeometry = new THREE.SphereGeometry(0.3, 8, 8);
+                    const wordMaterial = new THREE.MeshPhongMaterial({ 
+                        color: topic.color,
+                        transparent: true,
+                        opacity: 0.6
+                    });
+                    const wordMesh = new THREE.Mesh(wordGeometry, wordMaterial);
+                    
+                    wordMesh.position.set(
+                        x + Math.cos(wordAngle) * wordRadius,
+                        y + (Math.random() - 0.5) * 2,
+                        z + Math.sin(wordAngle) * wordRadius
+                    );
+                    wordMesh.userData = { word, topic: topic.name, type: 'word' };
+                    
+                    scene.add(wordMesh);
+                    wordMeshes.push(wordMesh);
+
+                    // Connection line
+                    const lineGeometry = new THREE.BufferGeometry().setFromPoints([
+                        topicMesh.position,
+                        wordMesh.position
+                    ]);
+                    const lineMaterial = new THREE.LineBasicMaterial({ 
+                        color: topic.color,
+                        transparent: true,
+                        opacity: 0.3
+                    });
+                    const line = new THREE.Line(lineGeometry, lineMaterial);
+                    scene.add(line);
+                });
+            });
+
+            // Connect topics with faint lines
+            for (let i = 0; i < topicMeshes.length; i++) {
+                for (let j = i + 1; j < topicMeshes.length; j++) {
+                    const lineGeometry = new THREE.BufferGeometry().setFromPoints([
+                        topicMeshes[i].position,
+                        topicMeshes[j].position
+                    ]);
+                    const lineMaterial = new THREE.LineBasicMaterial({ 
+                        color: 0x333333,
+                        transparent: true,
+                        opacity: 0.1
+                    });
+                    const line = new THREE.Line(lineGeometry, lineMaterial);
+                    scene.add(line);
+                }
+            }
+        }
+
+        function createGalaxyLayout() {
+            clearMeshes();
+            
+            topics.forEach((topic, index) => {
+                // Spiral galaxy arrangement
+                const angle = index * 2.4; // Golden angle
+                const radius = Math.sqrt(index + 1) * 3;
+                const x = Math.cos(angle) * radius;
+                const z = Math.sin(angle) * radius;
+                const y = (Math.random() - 0.5) * 6;
+
+                // Topic sphere
+                const topicGeometry = new THREE.SphereGeometry(topic.strength * 1.5, 16, 16);
+                const topicMaterial = new THREE.MeshPhongMaterial({ 
+                    color: topic.color,
+                    emissive: topic.color,
+                    emissiveIntensity: 0.2
+                });
+                const topicMesh = new THREE.Mesh(topicGeometry, topicMaterial);
+                topicMesh.position.set(x, y, z);
+                topicMesh.userData = { topic, type: 'topic' };
+                
+                scene.add(topicMesh);
+                topicMeshes.push(topicMesh);
+
+                // Word trail
+                topic.words.forEach((word, wordIndex) => {
+                    const trailAngle = angle + (wordIndex * 0.5);
+                    const trailRadius = radius + wordIndex * 1.5;
+                    
+                    const wordGeometry = new THREE.SphereGeometry(0.2, 8, 8);
+                    const wordMaterial = new THREE.MeshPhongMaterial({ 
+                        color: topic.color,
+                        transparent: true,
+                        opacity: 0.7
+                    });
+                    const wordMesh = new THREE.Mesh(wordGeometry, wordMaterial);
+                    
+                    wordMesh.position.set(
+                        Math.cos(trailAngle) * trailRadius,
+                        y + (Math.random() - 0.5),
+                        Math.sin(trailAngle) * trailRadius
+                    );
+                    wordMesh.userData = { word, topic: topic.name, type: 'word' };
+                    
+                    scene.add(wordMesh);
+                    wordMeshes.push(wordMesh);
+                });
+            });
+        }
+
+        function createCloudLayout() {
+            clearMeshes();
+            
+            topics.forEach((topic) => {
+                // Random cloud positions
+                topic.words.forEach((word, wordIndex) => {
+                    const wordGeometry = new THREE.SphereGeometry(0.5 + Math.random() * 0.8, 8, 8);
+                    const wordMaterial = new THREE.MeshPhongMaterial({ 
+                        color: topic.color,
+                        transparent: true,
+                        opacity: 0.8
+                    });
+                    const wordMesh = new THREE.Mesh(wordGeometry, wordMaterial);
+                    
+                    wordMesh.position.set(
+                        (Math.random() - 0.5) * 40,
+                        (Math.random() - 0.5) * 20,
+                        (Math.random() - 0.5) * 40
+                    );
+                    wordMesh.userData = { word, topic: topic.name, type: 'word' };
+                    
+                    scene.add(wordMesh);
+                    wordMeshes.push(wordMesh);
+                });
+            });
+        }
+
+        function clearMeshes() {
+            [...topicMeshes, ...wordMeshes].forEach(mesh => {
+                scene.remove(mesh);
+                mesh.geometry.dispose();
+                mesh.material.dispose();
+            });
+            
+            // Remove lines
+            scene.children = scene.children.filter(child => 
+                child.type !== 'Line'
+            );
+            
+            topicMeshes = [];
+            wordMeshes = [];
+        }
+
+        function animate() {
+            requestAnimationFrame(animate);
+
+            if (animateObjects) {
+                // Rotate topics
+                topicMeshes.forEach(mesh => {
+                    mesh.rotation.y += 0.01;
+                    mesh.rotation.x += 0.005;
+                });
+
+                // Animate words
+                wordMeshes.forEach((mesh, index) => {
+                    mesh.rotation.y += 0.02;
+                    mesh.position.y += Math.sin(Date.now() * 0.001 + index) * 0.01;
+                });
+            }
+
+            renderer.render(scene, camera);
+        }
+
+        function changeLayout(layout) {
+            currentLayout = layout;
+            switch(layout) {
+                case 'network':
+                    createNetworkLayout();
+                    break;
+                case 'galaxy':
+                    createGalaxyLayout();
+                    break;
+                case 'cloud':
+                    createCloudLayout();
+                    break;
+            }
+        }
+
+        function toggleAnimation() {
+            animateObjects = !animateObjects;
+        }
+
+        function resetView() {
+            scene.rotation.set(0, 0, 0);
+            camera.position.set(0, 0, 30);
+        }
+
+        // Handle window resize
+        window.addEventListener('resize', () => {
+            camera.aspect = window.innerWidth / window.innerHeight;
+            camera.updateProjectionMatrix();
+            renderer.setSize(window.innerWidth, window.innerHeight);
+        });
+
+        // Add click detection for topic details
+        const raycaster = new THREE.Raycaster();
+        const mouse = new THREE.Vector2();
+
+        renderer.domElement.addEventListener('mousemove', (event) => {
+            mouse.x = (event.clientX / window.innerWidth) * 2 - 1;
+            mouse.y = -(event.clientY / window.innerHeight) * 2 + 1;
+
+            raycaster.setFromCamera(mouse, camera);
+            const intersects = raycaster.intersectObjects([...topicMeshes, ...wordMeshes]);
+
+            if (intersects.length > 0) {
+                const object = intersects[0].object;
+                const userData = object.userData;
+                
+                if (userData.type === 'topic') {
+                    document.getElementById('topic-details').innerHTML = 
+                        `<strong>${userData.topic.name}</strong><br>Strength: ${(userData.topic.strength * 100).toFixed(0)}%<br>Words: ${userData.topic.words.join(', ')}`;
+                } else if (userData.type === 'word') {
+                    document.getElementById('topic-details').innerHTML = 
+                        `<strong>Word:</strong> ${userData.word}<br><strong>Topic:</strong> ${userData.topic}`;
+                }
+                
+                renderer.domElement.style.cursor = 'pointer';
+            } else {
+                document.getElementById('topic-details').innerHTML = 'Hover over a topic to see details';
+                renderer.domElement.style.cursor = 'default';
+            }
+        });
+
+        // Initialize
+        init();
+    </script>
+</body>
+</html>
