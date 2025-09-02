@@ -1,0 +1,408 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Claude.md Topic Evolution Analysis</title>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/3.9.1/chart.min.js"></script>
+    <style>
+        * { box-sizing: border-box; }
+        body { 
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; 
+            margin: 0; padding: 20px; 
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            color: #333;
+        }
+        .container { 
+            max-width: 1400px; 
+            margin: 0 auto; 
+            background: white; 
+            border-radius: 12px; 
+            box-shadow: 0 20px 40px rgba(0,0,0,0.1);
+            overflow: hidden;
+        }
+        .header {
+            background: linear-gradient(135deg, #2c3e50, #34495e);
+            color: white;
+            padding: 30px;
+            text-align: center;
+        }
+        .header h1 { margin: 0 0 10px 0; font-size: 2.2em; font-weight: 300; }
+        .header .subtitle { opacity: 0.9; font-size: 1.1em; }
+        .content { padding: 30px; }
+        .loading { 
+            text-align: center; 
+            padding: 40px; 
+            color: #666;
+            font-size: 1.1em;
+        }
+        .error { 
+            background: #f8d7da; 
+            border: 1px solid #f5c6cb; 
+            color: #721c24; 
+            padding: 20px; 
+            border-radius: 8px; 
+            margin: 20px 0;
+        }
+        .stats-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+            gap: 20px;
+            margin-bottom: 30px;
+        }
+        .stat-card {
+            background: #f8f9fa;
+            padding: 20px;
+            border-radius: 8px;
+            border-left: 4px solid #667eea;
+        }
+        .stat-number { 
+            font-size: 2.2em; 
+            font-weight: bold; 
+            color: #2c3e50; 
+            display: block; 
+        }
+        .stat-label { 
+            color: #666; 
+            font-size: 0.9em; 
+            margin-top: 5px;
+        }
+        .chart-section {
+            background: white;
+            border-radius: 12px;
+            padding: 25px;
+            margin-bottom: 30px;
+            box-shadow: 0 4px 15px rgba(0,0,0,0.08);
+        }
+        .chart-title {
+            font-size: 1.4em;
+            font-weight: 600;
+            margin-bottom: 20px;
+            color: #2c3e50;
+        }
+        .chart-container {
+            position: relative;
+            height: 400px;
+            margin-bottom: 20px;
+        }
+        .timeline-container {
+            margin-top: 30px;
+        }
+        .timeline-run {
+            background: #f8f9fa;
+            border-radius: 8px;
+            padding: 20px;
+            margin-bottom: 15px;
+            border-left: 4px solid #667eea;
+        }
+        .timeline-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 15px;
+        }
+        .run-date {
+            font-weight: 600;
+            color: #2c3e50;
+        }
+        .run-stats {
+            font-size: 0.9em;
+            color: #666;
+        }
+        .topic-matches {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+            gap: 15px;
+        }
+        .topic-match {
+            background: white;
+            padding: 15px;
+            border-radius: 6px;
+            border: 1px solid #e9ecef;
+        }
+        .topic-match.new-topic {
+            border-left: 4px solid #28a745;
+        }
+        .topic-match.existing-topic {
+            border-left: 4px solid #007bff;
+        }
+        .match-label {
+            font-weight: 600;
+            color: #2c3e50;
+            margin-bottom: 5px;
+        }
+        .match-similarity {
+            font-size: 0.9em;
+            color: #666;
+        }
+        .similarity-high { color: #28a745; }
+        .similarity-medium { color: #ffc107; }
+        .similarity-low { color: #dc3545; }
+        .nav-link {
+            display: inline-block;
+            background: #667eea;
+            color: white;
+            padding: 10px 20px;
+            text-decoration: none;
+            border-radius: 5px;
+            margin: 10px 5px;
+            transition: background 0.3s;
+        }
+        .nav-link:hover {
+            background: #5a6fd8;
+            text-decoration: none;
+            color: white;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>Topic Evolution Analysis</h1>
+            <p class="subtitle">Track how Claude.md topics change and evolve over time</p>
+            <div>
+                <a href="/" class="nav-link">← Back to Main</a>
+                <a href="/threejs-visualization" class="nav-link">3D Visualization</a>
+                <a href="/api/export-data" class="nav-link">📊 Export Data</a>
+                <a href="/api/download-logs" class="nav-link">📋 Download Logs</a>
+            </div>
+        </div>
+        
+        <div class="content">
+            <div id="loading" class="loading">
+                Loading topic evolution data...
+            </div>
+            
+            <div id="error-message" class="error" style="display: none;">
+            </div>
+            
+            <div id="evolution-content" style="display: none;">
+                <div class="stats-grid">
+                    <div class="stat-card">
+                        <span class="stat-number" id="total-runs">0</span>
+                        <div class="stat-label">Total Analysis Runs</div>
+                    </div>
+                    <div class="stat-card">
+                        <span class="stat-number" id="most-stable-topic">-</span>
+                        <div class="stat-label">Most Stable Topic</div>
+                    </div>
+                    <div class="stat-card">
+                        <span class="stat-number" id="avg-new-topics">0</span>
+                        <div class="stat-label">Avg New Topics per Run</div>
+                    </div>
+                    <div class="stat-card">
+                        <span class="stat-number" id="topic-stability">0%</span>
+                        <div class="stat-label">Overall Stability Score</div>
+                    </div>
+                </div>
+                
+                <div class="chart-section">
+                    <div class="chart-title">Topic Stability Over Time</div>
+                    <div class="chart-container">
+                        <canvas id="stabilityChart"></canvas>
+                    </div>
+                </div>
+                
+                <div class="chart-section">
+                    <div class="chart-title">New Topics Discovery Timeline</div>
+                    <div class="chart-container">
+                        <canvas id="newTopicsChart"></canvas>
+                    </div>
+                </div>
+                
+                <div class="timeline-container">
+                    <div class="chart-title">Detailed Timeline</div>
+                    <div id="timeline-content">
+                        <!-- Timeline items will be populated here -->
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        let evolutionData = null;
+
+        async function loadEvolutionData() {
+            try {
+                const response = await fetch('/api/topic-evolution');
+                const data = await response.json();
+                
+                if (data.error) {
+                    showError(data.error);
+                    return;
+                }
+                
+                evolutionData = data;
+                displayEvolutionData(data);
+                
+            } catch (error) {
+                showError('Failed to load topic evolution data: ' + error.message);
+            }
+        }
+
+        function showError(message) {
+            document.getElementById('loading').style.display = 'none';
+            document.getElementById('error-message').textContent = message;
+            document.getElementById('error-message').style.display = 'block';
+        }
+
+        function displayEvolutionData(data) {
+            document.getElementById('loading').style.display = 'none';
+            document.getElementById('evolution-content').style.display = 'block';
+            
+            // Update summary stats
+            document.getElementById('total-runs').textContent = data.total_runs_analyzed;
+            
+            // Find most stable topic
+            let mostStable = null;
+            let highestStability = 0;
+            for (const [topic, scores] of Object.entries(data.stability_scores || {})) {
+                if (scores.consistency_score > highestStability) {
+                    highestStability = scores.consistency_score;
+                    mostStable = topic;
+                }
+            }
+            document.getElementById('most-stable-topic').textContent = mostStable || 'N/A';
+            
+            // Calculate average new topics
+            const avgNewTopics = data.timeline.reduce((sum, run) => sum + (run.new_topics_count || 0), 0) / Math.max(data.timeline.length - 1, 1);
+            document.getElementById('avg-new-topics').textContent = avgNewTopics.toFixed(1);
+            
+            // Overall stability
+            const overallStability = Object.values(data.stability_scores || {}).reduce((sum, s) => sum + s.avg_similarity, 0) / Math.max(Object.keys(data.stability_scores || {}).length, 1);
+            document.getElementById('topic-stability').textContent = (overallStability * 100).toFixed(1) + '%';
+            
+            // Create charts
+            createStabilityChart(data);
+            createNewTopicsChart(data);
+            createTimeline(data);
+        }
+
+        function createStabilityChart(data) {
+            const ctx = document.getElementById('stabilityChart').getContext('2d');
+            
+            const datasets = [];
+            const colors = ['#667eea', '#f093fb', '#4facfe', '#43e97b', '#fa709a', '#ff6b6b', '#4ecdc4', '#45b7d1'];
+            
+            let colorIndex = 0;
+            for (const [topic, stability] of Object.entries(data.stability_scores || {})) {
+                datasets.push({
+                    label: topic,
+                    data: stability.map ? stability.map(s => ({ x: s.run, y: s.similarity * 100 })) : [],
+                    borderColor: colors[colorIndex % colors.length],
+                    backgroundColor: colors[colorIndex % colors.length] + '20',
+                    tension: 0.4
+                });
+                colorIndex++;
+            }
+            
+            new Chart(ctx, {
+                type: 'line',
+                data: { datasets },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: {
+                        legend: { position: 'top' }
+                    },
+                    scales: {
+                        x: {
+                            type: 'linear',
+                            title: { display: true, text: 'Analysis Run' }
+                        },
+                        y: {
+                            title: { display: true, text: 'Similarity Score (%)' },
+                            min: 0,
+                            max: 100
+                        }
+                    }
+                }
+            });
+        }
+
+        function createNewTopicsChart(data) {
+            const ctx = document.getElementById('newTopicsChart').getContext('2d');
+            
+            const labels = data.timeline.map((run, i) => `Run ${i + 1}`);
+            const newTopicsCounts = data.timeline.map(run => run.new_topics_count || 0);
+            
+            new Chart(ctx, {
+                type: 'bar',
+                data: {
+                    labels,
+                    datasets: [{
+                        label: 'New Topics Discovered',
+                        data: newTopicsCounts,
+                        backgroundColor: '#667eea',
+                        borderColor: '#5a6fd8',
+                        borderWidth: 1
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: {
+                        legend: { display: false }
+                    },
+                    scales: {
+                        y: {
+                            beginAtZero: true,
+                            title: { display: true, text: 'Number of New Topics' }
+                        }
+                    }
+                }
+            });
+        }
+
+        function createTimeline(data) {
+            const container = document.getElementById('timeline-content');
+            
+            data.timeline.forEach((run, index) => {
+                const runDiv = document.createElement('div');
+                runDiv.className = 'timeline-run';
+                
+                const date = new Date(run.timestamp).toLocaleString();
+                
+                let timelineHTML = `
+                    <div class="timeline-header">
+                        <div class="run-date">Analysis Run ${index + 1} - ${date}</div>
+                        <div class="run-stats">${run.topics_count} topics total</div>
+                    </div>
+                `;
+                
+                if (run.topic_matches) {
+                    timelineHTML += '<div class="topic-matches">';
+                    run.topic_matches.forEach(match => {
+                        const isNew = match.is_new_topic;
+                        const similarity = match.best_match ? match.best_match.similarity : 0;
+                        let similarityClass = 'similarity-low';
+                        if (similarity > 0.7) similarityClass = 'similarity-high';
+                        else if (similarity > 0.4) similarityClass = 'similarity-medium';
+                        
+                        timelineHTML += `
+                            <div class="topic-match ${isNew ? 'new-topic' : 'existing-topic'}">
+                                <div class="match-label">${match.current_label}</div>
+                                <div class="match-similarity">
+                                    ${isNew ? 
+                                        '<span style="color: #28a745;">New Topic</span>' : 
+                                        `<span class="${similarityClass}">Similarity: ${(similarity * 100).toFixed(1)}%</span> to "${match.best_match.historical_label}"`
+                                    }
+                                </div>
+                            </div>
+                        `;
+                    });
+                    timelineHTML += '</div>';
+                }
+                
+                runDiv.innerHTML = timelineHTML;
+                container.appendChild(runDiv);
+            });
+        }
+
+        // Load data when page loads
+        document.addEventListener('DOMContentLoaded', loadEvolutionData);
+    </script>
+</body>
+</html>

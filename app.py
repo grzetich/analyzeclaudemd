@@ -17,6 +17,8 @@ from nltk.tokenize import word_tokenize
 
 from sklearn.feature_extraction.text import CountVectorizer
 from sklearn.decomposition import LatentDirichletAllocation
+import numpy as np
+from scipy.spatial.distance import cosine
 import json
 import warnings
 import atexit
@@ -26,8 +28,9 @@ import logging
 from datetime import datetime, timedelta
 from logging.handlers import RotatingFileHandler
 
-from flask import Flask, render_template, send_from_directory, jsonify
+from flask import Flask, render_template, send_from_directory, jsonify, Response
 from dotenv import load_dotenv
+from database import AnalysisDatabase
 
 # --- Configuration ---
 load_dotenv() # Load environment variables from .env file (for local development)
@@ -145,6 +148,20 @@ def setup_logging():
 # Initialize logging
 setup_logging()
 
+# --- Database Setup ---
+try:
+    db = AnalysisDatabase()
+    logging.info("Database connection established")
+    
+    # Migrate existing JSON data if present
+    if os.path.exists(ANALYSIS_HISTORY_PATH):
+        db.migrate_json_data(ANALYSIS_HISTORY_PATH)
+        logging.info("Existing JSON data migration completed")
+        
+except Exception as e:
+    logging.error(f"Database initialization failed: {e}")
+    db = None
+
 def create_analysis_logger(analysis_timestamp):
     """Create a dedicated logger for an individual analysis run."""
     try:
@@ -200,7 +217,7 @@ def cleanup_on_analysis_complete():
     # Could add more cleanup here if we create other temporary files
     pass
 
-def save_analysis_cache(success=False, message="", timestamp=None, files_collected=0, topics_discovered=0):
+def save_analysis_cache(success=False, message="", timestamp=None, files_collected=0, topics_discovered=0, topics_data=None, log_content=""):
     """Save analysis results to cache file and add to history."""
     if timestamp is None:
         timestamp = datetime.now().isoformat()
@@ -210,19 +227,31 @@ def save_analysis_cache(success=False, message="", timestamp=None, files_collect
         'success': success,
         'message': message,
         'files_collected': files_collected,
-        'topics_discovered': topics_discovered
+        'topics_discovered': topics_discovered,
+        'topics_data': topics_data  # Store detailed topic information
     }
     
     try:
-        # Ensure cache directory exists
-        os.makedirs(os.path.dirname(ANALYSIS_CACHE_PATH), exist_ok=True)
+        # Store in database if available
+        if db:
+            db.store_analysis_run(
+                timestamp=timestamp,
+                success=success,
+                message=message,
+                files_collected=files_collected,
+                topics_discovered=topics_discovered,
+                topics_data=topics_data,
+                log_content=log_content
+            )
         
-        # Save current cache
+        # Also save to JSON for backwards compatibility
+        os.makedirs(os.path.dirname(ANALYSIS_CACHE_PATH), exist_ok=True)
         with open(ANALYSIS_CACHE_PATH, 'w') as f:
             json.dump(cache_data, f)
             
-        # Add to historical data
-        add_to_analysis_history(cache_data)
+        # Add to historical data (fallback)
+        if not db:
+            add_to_analysis_history(cache_data)
         
         # Log the result
         if success:
@@ -268,9 +297,13 @@ def add_to_analysis_history(analysis_data):
 def load_analysis_history():
     """Load historical analysis results."""
     try:
-        if os.path.exists(ANALYSIS_HISTORY_PATH):
-            with open(ANALYSIS_HISTORY_PATH, 'r') as f:
-                return json.load(f)
+        if db:
+            return db.get_analysis_history()
+        else:
+            # Fallback to JSON files
+            if os.path.exists(ANALYSIS_HISTORY_PATH):
+                with open(ANALYSIS_HISTORY_PATH, 'r') as f:
+                    return json.load(f)
     except Exception as e:
         logging.error(f"Error loading analysis history: {e}")
         print(f"Error loading analysis history: {e}")
@@ -300,6 +333,133 @@ def get_analysis_stats():
         }
     except Exception as e:
         logging.error(f"Error calculating analysis stats: {e}")
+        return {'error': str(e)}
+
+# --- Topic Evolution Analysis Functions ---
+
+def calculate_topic_similarity(topic1, topic2, method='cosine'):
+    """Calculate similarity between two topics using their word distributions."""
+    try:
+        # Extract word weights, ensuring same vocabulary
+        words1_dict = {word: weight for word, weight in zip(topic1['top_words'], topic1['weights'])}
+        words2_dict = {word: weight for word, weight in zip(topic2['top_words'], topic2['weights'])}
+        
+        # Get union of vocabularies
+        all_words = set(words1_dict.keys()) | set(words2_dict.keys())
+        
+        # Create aligned vectors
+        vector1 = np.array([words1_dict.get(word, 0.0) for word in all_words])
+        vector2 = np.array([words2_dict.get(word, 0.0) for word in all_words])
+        
+        if method == 'cosine':
+            # Use 1 - cosine_distance to get cosine similarity
+            return 1 - cosine(vector1, vector2) if np.any(vector1) and np.any(vector2) else 0.0
+        elif method == 'jaccard':
+            # Jaccard similarity based on top N words overlap
+            top_n = min(10, len(topic1['top_words']), len(topic2['top_words']))
+            set1 = set(topic1['top_words'][:top_n])
+            set2 = set(topic2['top_words'][:top_n])
+            intersection = len(set1 & set2)
+            union = len(set1 | set2)
+            return intersection / union if union > 0 else 0.0
+        
+        return 0.0
+    except Exception as e:
+        logging.error(f"Error calculating topic similarity: {e}")
+        return 0.0
+
+def find_best_topic_matches(current_topics, historical_topics, threshold=0.3):
+    """Find best matches between current and historical topics."""
+    matches = []
+    
+    for current_idx, current_topic in enumerate(current_topics):
+        best_match = None
+        best_similarity = 0.0
+        
+        for historical_idx, historical_topic in enumerate(historical_topics):
+            similarity = calculate_topic_similarity(current_topic, historical_topic)
+            if similarity > best_similarity and similarity >= threshold:
+                best_similarity = similarity
+                best_match = {
+                    'historical_topic_id': historical_topic['topic_id'],
+                    'similarity': similarity,
+                    'historical_label': historical_topic['label']
+                }
+        
+        matches.append({
+            'current_topic_id': current_idx,
+            'current_label': current_topic['label'],
+            'best_match': best_match,
+            'is_new_topic': best_match is None
+        })
+    
+    return matches
+
+def analyze_topic_evolution():
+    """Analyze how topics have evolved over time across all historical runs."""
+    try:
+        history = load_analysis_history()
+        if len(history) < 2:
+            return {'error': 'Need at least 2 analysis runs to analyze evolution'}
+        
+        # Filter successful runs with topics data
+        runs_with_topics = [h for h in history if h.get('success') and h.get('topics_data')]
+        if len(runs_with_topics) < 2:
+            return {'error': 'Need at least 2 successful runs with topic data'}
+        
+        evolution_data = {
+            'total_runs_analyzed': len(runs_with_topics),
+            'timeline': [],
+            'topic_stability': {},
+            'new_topics_by_run': [],
+            'disappeared_topics': []
+        }
+        
+        previous_topics = None
+        for i, run in enumerate(runs_with_topics):
+            current_topics = run['topics_data']
+            run_analysis = {
+                'timestamp': run['timestamp'],
+                'run_index': i,
+                'topics_count': len(current_topics),
+                'topics': current_topics
+            }
+            
+            if previous_topics:
+                matches = find_best_topic_matches(current_topics, previous_topics)
+                run_analysis['topic_matches'] = matches
+                run_analysis['new_topics_count'] = sum(1 for m in matches if m['is_new_topic'])
+                
+                # Track stability
+                for match in matches:
+                    if not match['is_new_topic']:
+                        topic_label = match['current_label']
+                        if topic_label not in evolution_data['topic_stability']:
+                            evolution_data['topic_stability'][topic_label] = []
+                        evolution_data['topic_stability'][topic_label].append({
+                            'run': i,
+                            'similarity': match['best_match']['similarity']
+                        })
+            
+            evolution_data['timeline'].append(run_analysis)
+            previous_topics = current_topics
+        
+        # Calculate overall stability metrics
+        stability_scores = {}
+        for topic_label, stability_history in evolution_data['topic_stability'].items():
+            avg_similarity = np.mean([s['similarity'] for s in stability_history])
+            appearances = len(stability_history) + 1  # +1 for first appearance
+            stability_scores[topic_label] = {
+                'avg_similarity': float(avg_similarity),
+                'appearances': appearances,
+                'consistency_score': float(avg_similarity * (appearances / len(runs_with_topics)))
+            }
+        
+        evolution_data['stability_scores'] = stability_scores
+        return evolution_data
+        
+    except Exception as e:
+        logging.error(f"Error analyzing topic evolution: {e}")
         return {'error': str(e)}
 
 def should_run_analysis():
@@ -367,7 +527,7 @@ def run_scheduled_analysis():
                     analysis_logger.info(f"Successfully collected {num_files} claude.md files")
                     analysis_logger.info("Starting LDA topic modeling analysis...")
                 
-                success = perform_lda_and_visualize(collected_documents, num_topics=5)
+                success, topics_data = perform_lda_and_visualize(collected_documents, num_topics=5)
                 
                 # Clean up memory
                 collected_documents.clear()
@@ -382,7 +542,16 @@ def run_scheduled_analysis():
                         analysis_logger.info(f"Visualization generated: {VIS_HTML_PATH}")
                         analysis_logger.info("=== ANALYSIS RUN COMPLETED SUCCESSFULLY ===")
                     
-                    save_analysis_cache(True, success_msg, files_collected=num_files, topics_discovered=5)
+                    # Get log content for storage
+                    log_content = ""
+                    if log_filepath and os.path.exists(log_filepath):
+                        try:
+                            with open(log_filepath, 'r') as f:
+                                log_content = f.read()
+                        except Exception as e:
+                            logging.warning(f"Could not read log content: {e}")
+                    
+                    save_analysis_cache(True, success_msg, files_collected=num_files, topics_discovered=5, topics_data=topics_data, log_content=log_content)
                     cleanup_on_analysis_complete()
                     print("Scheduled analysis completed successfully")
                 else:
@@ -586,13 +755,42 @@ def perform_lda_and_visualize(documents, num_topics=5):
             'topics_discovered': num_topics
         }
         
+        # Extract detailed topic data for historical tracking
+        topics_data = extract_detailed_topics_data(lda_model, feature_names, num_topics)
+        
         # Create enhanced HTML visualization
         create_enhanced_visualization(lda_model, feature_names, num_topics, analysis_stats)
         print(f"LDA visualization saved to {VIS_HTML_PATH}")
-        return True
+        return True, topics_data
     except Exception as e:
         print(f"Error during LDA modeling or visualization: {e}")
-        return False
+        return False, None
+
+def extract_detailed_topics_data(lda_model, feature_names, num_topics):
+    """Extract detailed topic data for historical analysis."""
+    topics_data = []
+    
+    for topic_idx, topic in enumerate(lda_model.components_):
+        # Get top 20 words for better historical comparison
+        top_words_idx = topic.argsort()[-20:][::-1]
+        top_words = [feature_names[i] for i in top_words_idx]
+        weights = [float(topic[i]) for i in top_words_idx]  # Convert to float for JSON serialization
+        
+        # Calculate topic strength and coherence metrics
+        topic_strength = float(topic.sum())
+        top_10_strength = float(sum(topic[i] for i in top_words_idx[:10]))
+        
+        topic_data = {
+            'topic_id': topic_idx,
+            'top_words': top_words,
+            'weights': weights,
+            'topic_strength': topic_strength,
+            'top_10_strength': top_10_strength,
+            'label': generate_topic_label(top_words[:5])
+        }
+        topics_data.append(topic_data)
+    
+    return topics_data
 
 def generate_topic_label(top_words):
     """
@@ -1188,6 +1386,138 @@ def get_topics_for_3d():
         }
     }
     return jsonify(sample_data)
+
+@app.route('/api/topic-evolution')
+def get_topic_evolution():
+    """API endpoint to provide topic evolution analysis over time."""
+    try:
+        evolution_data = analyze_topic_evolution()
+        return jsonify(evolution_data)
+    except Exception as e:
+        logging.error(f"Error in topic evolution endpoint: {e}")
+        return jsonify({'error': str(e)}), 500
+
+@app.route('/topic-evolution')
+def topic_evolution_page():
+    """Page to display topic evolution visualization."""
+    return render_template('topic_evolution.html')
+
+@app.route('/api/export-data')
+def export_analysis_data():
+    """Export all analysis data as JSON download."""
+    try:
+        if db:
+            data = db.export_data()
+            # Add database stats
+            stats = db.get_stats()
+            data['database_stats'] = stats
+        else:
+            # Fallback to JSON files
+            history = load_analysis_history()
+            data = {
+                'export_timestamp': datetime.now().isoformat(),
+                'total_runs': len(history),
+                'analysis_history': history,
+                'database_stats': {'database_type': 'JSON Files (Fallback)'}
+            }
+        
+        # Create JSON response with proper headers
+        json_data = json.dumps(data, indent=2)
+        
+        response = Response(
+            json_data,
+            mimetype='application/json',
+            headers={
+                'Content-Disposition': f'attachment; filename=claude_analysis_export_{datetime.now().strftime("%Y%m%d_%H%M%S")}.json'
+            }
+        )
+        
+        return response
+        
+    except Exception as e:
+        logging.error(f"Error exporting data: {e}")
+        return jsonify({'error': str(e)}), 500
+
+@app.route('/api/download-logs')
+def download_logs():
+    """Download application logs as a ZIP file."""
+    try:
+        import zipfile
+        import io
+        
+        # Create in-memory ZIP file
+        zip_buffer = io.BytesIO()
+        
+        with zipfile.ZipFile(zip_buffer, 'w', zipfile.ZIP_DEFLATED) as zip_file:
+            # Add main application log
+            if os.path.exists('logs/claude_analyzer.log'):
+                zip_file.write('logs/claude_analyzer.log', 'claude_analyzer.log')
+            
+            # Add individual analysis logs
+            if os.path.exists('logs/analysis_logs'):
+                for filename in os.listdir('logs/analysis_logs'):
+                    if filename.endswith('.log'):
+                        filepath = os.path.join('logs/analysis_logs', filename)
+                        zip_file.write(filepath, f'analysis_logs/{filename}')
+            
+            # Add database export if available
+            if db:
+                export_data = db.export_data()
+                export_json = json.dumps(export_data, indent=2)
+                zip_file.writestr('database_export.json', export_json)
+        
+        zip_buffer.seek(0)
+        
+        response = Response(
+            zip_buffer.getvalue(),
+            mimetype='application/zip',
+            headers={
+                'Content-Disposition': f'attachment; filename=claude_logs_{datetime.now().strftime("%Y%m%d_%H%M%S")}.zip'
+            }
+        )
+        
+        return response
+        
+    except Exception as e:
+        logging.error(f"Error creating log download: {e}")
+        return jsonify({'error': str(e)}), 500
+
+@app.route('/api/analysis-run/<int:run_id>')
+def get_analysis_run_details(run_id):
+    """Get detailed information about a specific analysis run."""
+    try:
+        if db:
+            run_data = db.get_analysis_run(run_id)
+            if run_data:
+                return jsonify(run_data)
+            else:
+                return jsonify({'error': 'Analysis run not found'}), 404
+        else:
+            return jsonify({'error': 'Database not available'}), 503
+            
+    except Exception as e:
+        logging.error(f"Error retrieving analysis run {run_id}: {e}")
+        return jsonify({'error': str(e)}), 500
+
+@app.route('/api/database-stats')
+def get_database_stats():
+    """Get database statistics."""
+    try:
+        if db:
+            stats = db.get_stats()
+            return jsonify(stats)
+        else:
+            # Fallback stats from JSON files
+            history = load_analysis_history()
+            return jsonify({
+                'total_runs': len(history),
+                'successful_runs': len([h for h in history if h.get('success')]),
+                'database_type': 'JSON Files (Fallback)',
+                'success_rate': len([h for h in history if h.get('success')]) / len(history) * 100 if history else 0
+            })
+    except Exception as e:
+        logging.error(f"Error getting database stats: {e}")
+        return jsonify({'error': str(e)}), 500
 
 # --- Run the Flask App ---
 if __name__ == '__main__':
