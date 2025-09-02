@@ -1,0 +1,23 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(python:*)",
+      "Bash(pip install:*)",
+      "Bash(py:*)",
+      "Bash(C:UsersedgrzAppDataLocalMicrosoftWindowsAppspython.exe app.py)",
+      "Bash(\"/c/Users/edgrz/AppData/Local/Microsoft/WindowsApps/python.exe\" app.py)",
+      "Bash(git add:*)",
+      "Bash(git commit:*)",
+      "Bash(git push:*)",
+      "Bash(curl:*)",
+      "Bash(git checkout:*)",
+      "Bash(git rm:*)",
+      "Bash(git stash:*)",
+      "Bash(git merge:*)",
+      "Bash(git reset:*)",
+      "Bash(git branch:*)"
+    ],
+    "deny": [],
+    "ask": []
+  }
+}

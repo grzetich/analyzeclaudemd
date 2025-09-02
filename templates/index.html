@@ -267,6 +267,10 @@
                 <div class="loading-spinner"></div>
                 Loading analysis results...
             </div>
+            
+            <button id="manual-trigger" onclick="runManualAnalysis()" style="display: none; background: #667eea; color: white; border: none; padding: 12px 24px; border-radius: 8px; font-size: 1.1em; cursor: pointer; margin-top: 10px;">
+                🔄 Run New Analysis
+            </button>
         </div>
 
         <div class="view-options">
@@ -381,11 +385,12 @@
             vizSection.scrollIntoView({ behavior: 'smooth' });
         }
 
-        async function checkAnalysis() {
+        async function checkAnalysisStatus() {
             const statusDiv = document.getElementById('status-message');
             
             try {
-                const response = await fetch('/analyze', { method: 'POST' });
+                // First check if we have recent analysis results without triggering new analysis
+                const response = await fetch('/analyze', { method: 'GET' });
                 const data = await response.json();
                 analysisData = data;
                 
@@ -405,7 +410,12 @@
                     
                     // If analysis is running, poll for updates
                     if (data.message.includes('running') || data.message.includes('started')) {
-                        setTimeout(checkAnalysis, 15000); // Check again in 15 seconds
+                        setTimeout(checkAnalysisStatus, 15000); // Check again in 15 seconds
+                    }
+                    
+                    // Show manual trigger button if no recent analysis
+                    if (data.message.includes('No analysis') || data.message.includes('analysis not')) {
+                        document.getElementById('manual-trigger').style.display = 'block';
                     }
                 } else {
                     statusDiv.classList.add('status-error');
@@ -432,9 +442,33 @@
             }
         }
 
-        // Auto-start analysis check when page loads
+        async function runManualAnalysis() {
+            const statusDiv = document.getElementById('status-message');
+            const triggerBtn = document.getElementById('manual-trigger');
+            
+            // Hide the button and show loading
+            triggerBtn.style.display = 'none';
+            statusDiv.className = 'status-message status-warning';
+            statusDiv.innerHTML = '<div class="loading-spinner"></div>Starting new analysis...';
+            
+            try {
+                const response = await fetch('/analyze', { method: 'POST' });
+                const data = await response.json();
+                
+                if (data.status === 'warning' && (data.message.includes('running') || data.message.includes('started'))) {
+                    // Analysis started, poll for updates
+                    setTimeout(checkAnalysisStatus, 15000);
+                }
+            } catch (error) {
+                statusDiv.className = 'status-message status-error';
+                statusDiv.innerHTML = 'Failed to start analysis: ' + error.message;
+                triggerBtn.style.display = 'block';
+            }
+        }
+
+        // Check analysis status when page loads (without triggering new analysis)
         window.addEventListener('DOMContentLoaded', function() {
-            checkAnalysis();
+            checkAnalysisStatus();
         });
     </script>
 </body>

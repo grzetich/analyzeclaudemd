@@ -1174,16 +1174,17 @@ def create_simple_visualization(lda_model, feature_names, num_topics):
 
 @app.route('/')
 def index():
-    """Renders the main page and triggers scheduled analysis if needed."""
-    # Trigger background analysis if needed
-    run_scheduled_analysis()
+    """Renders the main page."""
     return render_template('index.html')
 
-@app.route('/analyze', methods=['POST'])
+@app.route('/analyze', methods=['GET', 'POST'])
 def analyze_data():
     """
-    Returns cached analysis status or triggers new analysis if needed.
+    GET: Returns cached analysis status without triggering new analysis.
+    POST: Triggers new analysis if needed.
     """
+    from flask import request
+    
     cache = load_analysis_cache()
     
     if cache:
@@ -1199,7 +1200,7 @@ def analyze_data():
                 "message": f"Last analysis failed on {datetime.fromisoformat(cache['timestamp']).strftime('%B %d, %Y at %I:%M %p')}: {cache.get('message', 'Unknown error')}"
             })
     
-    # If no cache or visualization missing, check if analysis is running
+    # Check if analysis is running
     global last_analysis_thread
     if last_analysis_thread and last_analysis_thread.is_alive():
         return jsonify({
@@ -1207,12 +1208,20 @@ def analyze_data():
             "message": "Analysis is currently running in the background. Results will be available once complete."
         })
     
-    # No valid cache and no running analysis - trigger new one
-    run_scheduled_analysis()
-    return jsonify({
-        "status": "warning", 
-        "message": "Analysis started in background. Results will be available shortly."
-    })
+    # Handle GET vs POST differently
+    if request.method == 'GET':
+        # GET request - just return status, don't trigger analysis
+        return jsonify({
+            "status": "info", 
+            "message": "No recent analysis available. Click 'Run New Analysis' to start."
+        })
+    else:
+        # POST request - trigger new analysis
+        run_scheduled_analysis()
+        return jsonify({
+            "status": "warning", 
+            "message": "Analysis started in background. Results will be available shortly."
+        })
 
 @app.route('/visualization')
 def get_visualization():
