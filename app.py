@@ -99,10 +99,11 @@ LOG_PATH = "/tmp/claude_analyzer.log" if os.name != 'nt' else "logs/claude_analy
 ANALYSIS_LOGS_DIR = "/tmp/analysis_logs/" if os.name != 'nt' else "logs/analysis_logs/"
 TEMP_DIRS = ["/tmp", "/tmp/analysis_logs"] if os.name != 'nt' else ["temp", "cache", "logs", "logs/analysis_logs"]
 
-# Analysis scheduling
-ANALYSIS_INTERVAL_HOURS = 24  # Run analysis once per day
+# Analysis scheduling - runs daily at 3 AM GMT
+ANALYSIS_TARGET_HOUR_GMT = 3  # 3 AM GMT
 MAX_HISTORY_ENTRIES = 30  # Keep 30 days of history
 last_analysis_thread = None
+scheduler_thread = None
 
 # Configure logging
 def setup_logging():
@@ -463,130 +464,202 @@ def analyze_topic_evolution():
         return {'error': str(e)}
 
 def should_run_analysis():
-    """Check if analysis should run based on cache timestamp."""
+    """Check if analysis should run based on daily 3 AM GMT schedule."""
     cache = load_analysis_cache()
     if not cache:
         return True
     
     try:
+        from datetime import timezone
+        
+        # Get the last run time
         last_run = datetime.fromisoformat(cache['timestamp'])
-        time_diff = datetime.now() - last_run
-        return time_diff.total_seconds() > (ANALYSIS_INTERVAL_HOURS * 3600)
-    except:
+        if last_run.tzinfo is None:
+            last_run = last_run.replace(tzinfo=timezone.utc)
+        
+        # Get current time in GMT
+        now_gmt = datetime.now(timezone.utc)
+        
+        # Get today's 3 AM GMT
+        today_3am = now_gmt.replace(hour=ANALYSIS_TARGET_HOUR_GMT, minute=0, second=0, microsecond=0)
+        
+        # If it's past 3 AM today and we haven't run since yesterday's 3 AM
+        if now_gmt >= today_3am:
+            yesterday_3am = today_3am - timedelta(days=1)
+            return last_run < yesterday_3am
+        else:
+            # If it's before 3 AM today, check if we need to run (should have run yesterday)
+            yesterday_3am = today_3am - timedelta(days=1)
+            return last_run < yesterday_3am
+            
+    except Exception as e:
+        logging.error(f"Error checking analysis schedule: {e}")
         return True
 
-def run_scheduled_analysis():
-    """Run analysis in background if needed."""
+def time_until_next_analysis():
+    """Calculate seconds until next scheduled analysis (3 AM GMT)."""
+    try:
+        from datetime import timezone
+        
+        now_gmt = datetime.now(timezone.utc)
+        
+        # Get next 3 AM GMT
+        next_3am = now_gmt.replace(hour=ANALYSIS_TARGET_HOUR_GMT, minute=0, second=0, microsecond=0)
+        
+        # If we've passed 3 AM today, schedule for tomorrow
+        if now_gmt >= next_3am:
+            next_3am += timedelta(days=1)
+        
+        return (next_3am - now_gmt).total_seconds()
+        
+    except Exception as e:
+        logging.error(f"Error calculating next analysis time: {e}")
+        return 3600  # Default to 1 hour if error
+
+def start_analysis_scheduler():
+    """Start the background scheduler that runs analysis at 3 AM GMT daily."""
+    global scheduler_thread
+    
+    def scheduler_worker():
+        """Background scheduler that waits and runs analysis at the right time."""
+        while True:
+            try:
+                if should_run_analysis():
+                    logging.info("Scheduled analysis time reached - starting analysis")
+                    run_analysis_now()
+                
+                # Sleep until next check (every hour)
+                time.sleep(3600)  # Check every hour
+                
+            except Exception as e:
+                logging.error(f"Error in analysis scheduler: {e}")
+                time.sleep(3600)  # Continue checking after error
+    
+    if not scheduler_thread or not scheduler_thread.is_alive():
+        scheduler_thread = threading.Thread(target=scheduler_worker, daemon=True)
+        scheduler_thread.start()
+        
+        # Log next scheduled time
+        seconds_until = time_until_next_analysis()
+        next_run = datetime.now() + timedelta(seconds=seconds_until)
+        logging.info(f"Analysis scheduler started - next run scheduled for {next_run.strftime('%Y-%m-%d %H:%M:%S')} GMT")
+
+def run_analysis_now():
+    """Run analysis in background immediately."""
     global last_analysis_thread
     
-    if should_run_analysis():
-        print("Starting scheduled analysis...")
+    # Don't start if already running
+    if last_analysis_thread and last_analysis_thread.is_alive():
+        logging.info("Analysis already running, skipping new request")
+        return False
         
-        def analysis_worker():
-            analysis_start_time = datetime.now()
-            analysis_logger = None
-            log_filepath = None
+    print("Starting analysis...")
+    logging.info("Starting on-demand analysis")
+    
+    def analysis_worker():
+        analysis_start_time = datetime.now()
+        analysis_logger = None
+        log_filepath = None
+        
+        try:
+            # Create individual analysis logger
+            analysis_logger, log_filepath = create_analysis_logger(analysis_start_time)
             
-            try:
-                # Create individual analysis logger
-                analysis_logger, log_filepath = create_analysis_logger(analysis_start_time)
-                
-                # Log to both main log and individual analysis log
-                logging.info("Starting scheduled analysis...")
+            # Log to both main log and individual analysis log
+            logging.info("Starting scheduled analysis...")
+            if analysis_logger:
+                analysis_logger.info("=== ANALYSIS RUN STARTED ===")
+                analysis_logger.info(f"Analysis timestamp: {analysis_start_time.isoformat()}")
+            
+            if not GITHUB_TOKEN:
+                error_msg = "GitHub PAT not configured"
+                logging.error(error_msg)
                 if analysis_logger:
-                    analysis_logger.info("=== ANALYSIS RUN STARTED ===")
-                    analysis_logger.info(f"Analysis timestamp: {analysis_start_time.isoformat()}")
-                
-                if not GITHUB_TOKEN:
-                    error_msg = "GitHub PAT not configured"
-                    logging.error(error_msg)
-                    if analysis_logger:
-                        analysis_logger.error(error_msg)
-                        analysis_logger.info("=== ANALYSIS RUN FAILED ===")
-                    save_analysis_cache(False, error_msg, files_collected=0, topics_discovered=0)
-                    return
-                
-                logging.info("Collecting claude.md files from GitHub...")
-                if analysis_logger:
-                    analysis_logger.info("Starting GitHub file collection (max 500 files)...")
-                
-                collected_documents = get_claude_md_files(SEARCH_QUERY, HEADERS, max_files=500)
-                
-                if not collected_documents:
-                    error_msg = "No claude.md files found"
-                    logging.warning(error_msg)
-                    if analysis_logger:
-                        analysis_logger.warning(error_msg)
-                        analysis_logger.info("=== ANALYSIS RUN COMPLETED (NO DATA) ===")
-                    save_analysis_cache(False, error_msg, files_collected=0, topics_discovered=0)
-                    return
-                
-                num_files = len(collected_documents)
-                logging.info(f"Collected {num_files} files, starting LDA analysis...")
-                if analysis_logger:
-                    analysis_logger.info(f"Successfully collected {num_files} claude.md files")
-                    analysis_logger.info("Starting LDA topic modeling analysis...")
-                
-                success, topics_data = perform_lda_and_visualize(collected_documents, num_topics=5)
-                
-                # Clean up memory
-                collected_documents.clear()
-                collected_documents = None
-                
-                if success:
-                    success_msg = f"Analysis complete with {num_files} files"
-                    logging.info(f"Scheduled analysis completed successfully with {num_files} files")
-                    if analysis_logger:
-                        analysis_logger.info("LDA analysis completed successfully")
-                        analysis_logger.info(f"Topics discovered: 5")
-                        analysis_logger.info(f"Visualization generated: {VIS_HTML_PATH}")
-                        analysis_logger.info("=== ANALYSIS RUN COMPLETED SUCCESSFULLY ===")
-                    
-                    # Get log content for storage
-                    log_content = ""
-                    if log_filepath and os.path.exists(log_filepath):
-                        try:
-                            with open(log_filepath, 'r') as f:
-                                log_content = f.read()
-                        except Exception as e:
-                            logging.warning(f"Could not read log content: {e}")
-                    
-                    save_analysis_cache(True, success_msg, files_collected=num_files, topics_discovered=5, topics_data=topics_data, log_content=log_content)
-                    cleanup_on_analysis_complete()
-                    print("Scheduled analysis completed successfully")
-                else:
-                    error_msg = "Analysis failed during LDA processing"
-                    logging.error(error_msg)
-                    if analysis_logger:
-                        analysis_logger.error("LDA processing failed")
-                        analysis_logger.info("=== ANALYSIS RUN FAILED ===")
-                    save_analysis_cache(False, error_msg, files_collected=num_files, topics_discovered=0)
-                    print("Scheduled analysis failed")
-                    
-            except Exception as e:
-                error_msg = f"Analysis error: {str(e)}"
-                logging.error(f"Scheduled analysis error: {e}", exc_info=True)
-                if analysis_logger:
-                    analysis_logger.error(f"Unexpected error during analysis: {e}", exc_info=True)
-                    analysis_logger.info("=== ANALYSIS RUN FAILED WITH ERROR ===")
+                    analysis_logger.error(error_msg)
+                    analysis_logger.info("=== ANALYSIS RUN FAILED ===")
                 save_analysis_cache(False, error_msg, files_collected=0, topics_discovered=0)
-                print(f"Scheduled analysis error: {e}")
-            finally:
-                # Close individual analysis logger
+                return
+            
+            logging.info("Collecting claude.md files from GitHub...")
+            if analysis_logger:
+                analysis_logger.info("Starting GitHub file collection (max 500 files)...")
+            
+            collected_documents = get_claude_md_files(SEARCH_QUERY, HEADERS, max_files=500)
+            
+            if not collected_documents:
+                error_msg = "No claude.md files found"
+                logging.warning(error_msg)
                 if analysis_logger:
-                    for handler in analysis_logger.handlers:
-                        handler.close()
-                        analysis_logger.removeHandler(handler)
-                    
-                    # Log the final log file location to main log
-                    if log_filepath:
-                        logging.info(f"Individual analysis log saved to: {log_filepath}")
-        
-        last_analysis_thread = threading.Thread(target=analysis_worker)
-        last_analysis_thread.daemon = True
-        last_analysis_thread.start()
-    else:
-        print("Analysis not needed - using cached results")
+                    analysis_logger.warning(error_msg)
+                    analysis_logger.info("=== ANALYSIS RUN COMPLETED (NO DATA) ===")
+                save_analysis_cache(False, error_msg, files_collected=0, topics_discovered=0)
+                return
+            
+            num_files = len(collected_documents)
+            logging.info(f"Collected {num_files} files, starting LDA analysis...")
+            if analysis_logger:
+                analysis_logger.info(f"Successfully collected {num_files} claude.md files")
+                analysis_logger.info("Starting LDA topic modeling analysis...")
+            
+            success, topics_data = perform_lda_and_visualize(collected_documents, num_topics=5)
+            
+            # Clean up memory
+            collected_documents.clear()
+            collected_documents = None
+            
+            if success:
+                success_msg = f"Analysis complete with {num_files} files"
+                logging.info(f"Scheduled analysis completed successfully with {num_files} files")
+                if analysis_logger:
+                    analysis_logger.info("LDA analysis completed successfully")
+                    analysis_logger.info(f"Topics discovered: 5")
+                    analysis_logger.info(f"Visualization generated: {VIS_HTML_PATH}")
+                    analysis_logger.info("=== ANALYSIS RUN COMPLETED SUCCESSFULLY ===")
+                
+                # Get log content for storage
+                log_content = ""
+                if log_filepath and os.path.exists(log_filepath):
+                    try:
+                        with open(log_filepath, 'r') as f:
+                            log_content = f.read()
+                    except Exception as e:
+                        logging.warning(f"Could not read log content: {e}")
+                
+                save_analysis_cache(True, success_msg, files_collected=num_files, topics_discovered=5, topics_data=topics_data, log_content=log_content)
+                cleanup_on_analysis_complete()
+                print("Analysis completed successfully")
+            else:
+                error_msg = "Analysis failed during LDA processing"
+                logging.error(error_msg)
+                if analysis_logger:
+                    analysis_logger.error("LDA processing failed")
+                    analysis_logger.info("=== ANALYSIS RUN FAILED ===")
+                save_analysis_cache(False, error_msg, files_collected=num_files, topics_discovered=0)
+                print("Analysis failed")
+                
+        except Exception as e:
+            error_msg = f"Analysis error: {str(e)}"
+            logging.error(f"Analysis error: {e}", exc_info=True)
+            if analysis_logger:
+                analysis_logger.error(f"Unexpected error during analysis: {e}", exc_info=True)
+                analysis_logger.info("=== ANALYSIS RUN FAILED WITH ERROR ===")
+            save_analysis_cache(False, error_msg, files_collected=0, topics_discovered=0)
+            print(f"Analysis error: {e}")
+        finally:
+            # Close individual analysis logger
+            if analysis_logger:
+                for handler in analysis_logger.handlers:
+                    handler.close()
+                    analysis_logger.removeHandler(handler)
+                
+                # Log the final log file location to main log
+                if log_filepath:
+                    logging.info(f"Individual analysis log saved to: {log_filepath}")
+    
+    last_analysis_thread = threading.Thread(target=analysis_worker)
+    last_analysis_thread.daemon = True
+    last_analysis_thread.start()
+    return True
 
 # Register cleanup function to run at exit
 atexit.register(cleanup_temp_files)
@@ -1177,14 +1250,11 @@ def index():
     """Renders the main page."""
     return render_template('index.html')
 
-@app.route('/analyze', methods=['GET', 'POST'])
+@app.route('/analyze', methods=['GET'])
 def analyze_data():
     """
-    GET: Returns cached analysis status without triggering new analysis.
-    POST: Triggers new analysis if needed.
+    GET: Returns cached analysis status. Analysis runs automatically at 3 AM GMT daily.
     """
-    from flask import request
-    
     cache = load_analysis_cache()
     
     if cache:
@@ -1192,12 +1262,12 @@ def analyze_data():
         if cache['success'] and os.path.exists(VIS_HTML_PATH):
             return jsonify({
                 "status": "success", 
-                "message": f"Analysis completed on {datetime.fromisoformat(cache['timestamp']).strftime('%B %d, %Y at %I:%M %p')}. Results are cached and ready to view."
+                "message": f"Analysis completed on {datetime.fromisoformat(cache['timestamp']).strftime('%B %d, %Y at %I:%M %p')}. Next analysis scheduled for 3 AM GMT."
             })
         elif not cache['success']:
             return jsonify({
                 "status": "error", 
-                "message": f"Last analysis failed on {datetime.fromisoformat(cache['timestamp']).strftime('%B %d, %Y at %I:%M %p')}: {cache.get('message', 'Unknown error')}"
+                "message": f"Last analysis failed on {datetime.fromisoformat(cache['timestamp']).strftime('%B %d, %Y at %I:%M %p')}: {cache.get('message', 'Unknown error')}. Next retry at 3 AM GMT."
             })
     
     # Check if analysis is running
@@ -1208,19 +1278,21 @@ def analyze_data():
             "message": "Analysis is currently running in the background. Results will be available once complete."
         })
     
-    # Handle GET vs POST differently
-    if request.method == 'GET':
-        # GET request - just return status, don't trigger analysis
+    # No cache available
+    from datetime import timezone
+    try:
+        next_run_seconds = time_until_next_analysis()
+        next_run_time = datetime.now(timezone.utc) + timedelta(seconds=next_run_seconds)
+        next_run_str = next_run_time.strftime('%B %d at %I:%M %p GMT')
+        
         return jsonify({
             "status": "info", 
-            "message": "No recent analysis available. Click 'Run New Analysis' to start."
+            "message": f"No analysis available yet. Next analysis scheduled for {next_run_str}."
         })
-    else:
-        # POST request - trigger new analysis
-        run_scheduled_analysis()
+    except:
         return jsonify({
-            "status": "warning", 
-            "message": "Analysis started in background. Results will be available shortly."
+            "status": "info", 
+            "message": "No analysis available yet. Analysis runs daily at 3 AM GMT."
         })
 
 @app.route('/visualization')
@@ -1527,6 +1599,10 @@ def get_database_stats():
     except Exception as e:
         logging.error(f"Error getting database stats: {e}")
         return jsonify({'error': str(e)}), 500
+
+# Start the analysis scheduler when the app starts
+start_analysis_scheduler()
+logging.info("Claude.md analyzer started with daily 3 AM GMT scheduling")
 
 # --- Run the Flask App ---
 if __name__ == '__main__':
