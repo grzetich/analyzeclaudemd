@@ -1,0 +1,9 @@
+2025-08-29 19:53:45,422 - INFO - === ANALYSIS RUN STARTED ===
+2025-08-29 19:53:45,422 - INFO - Analysis timestamp: 2025-08-29T19:53:45.421350
+2025-08-29 19:53:45,423 - INFO - Starting GitHub file collection (max 500 files)...
+2025-08-29 19:56:11,206 - INFO - Successfully collected 500 claude.md files
+2025-08-29 19:56:11,206 - INFO - Starting LDA topic modeling analysis...
+2025-08-29 19:56:17,559 - INFO - LDA analysis completed successfully
+2025-08-29 19:56:17,559 - INFO - Topics discovered: 5
+2025-08-29 19:56:17,559 - INFO - Visualization generated: templates/lda_visualization.html
+2025-08-29 19:56:17,559 - INFO - === ANALYSIS RUN COMPLETED SUCCESSFULLY ===

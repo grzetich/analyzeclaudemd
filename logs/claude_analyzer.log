@@ -26,3 +26,57 @@
 2025-08-24 23:20:00,054 - werkzeug - WARNING -  * Debugger is active!
 2025-08-24 23:20:00,058 - werkzeug - INFO -  * Debugger PIN: 245-121-412
 2025-08-24 23:21:26,647 - werkzeug - INFO -  * Detected change in 'C:\\Users\\edgrz\\lib\\analyzeclaude\\app.py', reloading
+2025-08-24 23:21:28,705 - root - INFO - Logging system initialized
+2025-08-24 23:21:28,712 - werkzeug - WARNING -  * Debugger is active!
+2025-08-24 23:21:28,716 - werkzeug - INFO -  * Debugger PIN: 245-121-412
+2025-08-29 19:38:01,298 - werkzeug - INFO -  * Detected change in 'C:\\Users\\edgrz\\lib\\analyzeclaude\\app.py', reloading
+2025-08-29 19:52:49,812 - root - INFO - Logging system initialized
+2025-08-29 19:52:49,864 - werkzeug - INFO - [31m[1mWARNING: This is a development server. Do not use it in a production deployment. Use a production WSGI server instead.[0m
+ * Running on all addresses (0.0.0.0)
+ * Running on http://127.0.0.1:5000
+ * Running on http://192.168.68.51:5000
+2025-08-29 19:52:49,864 - werkzeug - INFO - [33mPress CTRL+C to quit[0m
+2025-08-29 19:52:49,872 - werkzeug - INFO -  * Restarting with stat
+2025-08-29 19:52:51,809 - root - INFO - Logging system initialized
+2025-08-29 19:52:51,817 - werkzeug - WARNING -  * Debugger is active!
+2025-08-29 19:52:51,821 - werkzeug - INFO -  * Debugger PIN: 245-121-412
+2025-08-29 19:53:17,603 - werkzeug - INFO - 127.0.0.1 - - [29/Aug/2025 19:53:17] "GET /threejs-simple HTTP/1.1" 200 -
+2025-08-29 19:53:18,021 - werkzeug - INFO - 127.0.0.1 - - [29/Aug/2025 19:53:18] "[33mGET /favicon.ico HTTP/1.1[0m" 404 -
+2025-08-29 19:53:31,859 - werkzeug - INFO - 127.0.0.1 - - [29/Aug/2025 19:53:31] "GET /threejs-visualization HTTP/1.1" 200 -
+2025-08-29 19:53:45,422 - root - INFO - Starting scheduled analysis...
+2025-08-29 19:53:45,423 - root - INFO - Collecting claude.md files from GitHub...
+2025-08-29 19:53:45,423 - root - INFO - Starting GitHub file collection (max 500 files)...
+2025-08-29 19:53:45,426 - werkzeug - INFO - 127.0.0.1 - - [29/Aug/2025 19:53:45] "GET / HTTP/1.1" 200 -
+2025-08-29 19:53:45,812 - werkzeug - INFO - 127.0.0.1 - - [29/Aug/2025 19:53:45] "GET /static/style.css HTTP/1.1" 200 -
+2025-08-29 19:53:46,020 - werkzeug - INFO - 127.0.0.1 - - [29/Aug/2025 19:53:46] "POST /analyze HTTP/1.1" 200 -
+2025-08-29 19:53:46,239 - werkzeug - INFO - 127.0.0.1 - - [29/Aug/2025 19:53:46] "GET /static/favicon.ico HTTP/1.1" 200 -
+2025-08-29 19:54:05,992 - werkzeug - INFO - 127.0.0.1 - - [29/Aug/2025 19:54:05] "GET /threejs-simple HTTP/1.1" 200 -
+2025-08-29 19:54:18,661 - werkzeug - INFO - 127.0.0.1 - - [29/Aug/2025 19:54:18] "GET /threejs-visualization HTTP/1.1" 200 -
+2025-08-29 19:54:31,417 - werkzeug - INFO - 127.0.0.1 - - [29/Aug/2025 19:54:31] "[33mGET /visualization HTTP/1.1[0m" 404 -
+2025-08-29 19:56:11,205 - root - INFO - Finished collection. Total 500 files collected.
+2025-08-29 19:56:11,205 - root - INFO - Collected 500 files, starting LDA analysis...
+2025-08-29 19:56:17,559 - root - INFO - Scheduled analysis completed successfully with 500 files
+2025-08-29 19:56:17,562 - root - INFO - Analysis completed successfully: 500 files, 5 topics
+2025-08-29 19:56:17,562 - root - INFO - Individual analysis log saved to: logs/analysis_logs/analysis_2025-08-29_19-53-45.log
+2025-08-29 19:57:38,166 - werkzeug - INFO -  * Detected change in 'C:\\Users\\edgrz\\lib\\analyzeclaude\\app.py', reloading
+2025-08-29 19:57:38,584 - werkzeug - INFO -  * Restarting with stat
+2025-08-29 19:57:40,543 - root - INFO - Logging system initialized
+2025-08-29 19:57:40,551 - werkzeug - WARNING -  * Debugger is active!
+2025-08-29 19:57:40,555 - werkzeug - INFO -  * Debugger PIN: 245-121-412
+2025-08-29 19:59:18,103 - werkzeug - INFO - 127.0.0.1 - - [29/Aug/2025 19:59:18] "GET /threejs-visualization HTTP/1.1" 200 -
+2025-08-29 19:59:18,333 - werkzeug - INFO - 127.0.0.1 - - [29/Aug/2025 19:59:18] "GET /api/topics-3d HTTP/1.1" 200 -
+2025-08-29 19:59:25,234 - werkzeug - INFO - 127.0.0.1 - - [29/Aug/2025 19:59:25] "GET /threejs-simple HTTP/1.1" 200 -
+2025-08-29 20:00:10,382 - werkzeug - INFO - 127.0.0.1 - - [29/Aug/2025 20:00:10] "GET /threejs-visualization HTTP/1.1" 200 -
+2025-08-29 20:00:10,768 - werkzeug - INFO - 127.0.0.1 - - [29/Aug/2025 20:00:10] "GET /api/topics-3d HTTP/1.1" 200 -
+2025-08-29 20:02:32,948 - werkzeug - INFO - 127.0.0.1 - - [29/Aug/2025 20:02:32] "GET /threejs-visualization HTTP/1.1" 200 -
+2025-08-29 20:02:33,188 - werkzeug - INFO - 127.0.0.1 - - [29/Aug/2025 20:02:33] "GET /api/topics-3d HTTP/1.1" 200 -
+2025-08-29 22:31:36,782 - werkzeug - INFO - 127.0.0.1 - - [29/Aug/2025 22:31:36] "GET / HTTP/1.1" 200 -
+2025-08-29 22:31:37,010 - werkzeug - INFO - 127.0.0.1 - - [29/Aug/2025 22:31:37] "POST /analyze HTTP/1.1" 200 -
+2025-08-29 22:31:37,194 - werkzeug - INFO - 127.0.0.1 - - [29/Aug/2025 22:31:37] "GET /static/favicon.ico HTTP/1.1" 200 -
+2025-08-29 22:31:52,024 - werkzeug - INFO - 127.0.0.1 - - [29/Aug/2025 22:31:52] "POST /analyze HTTP/1.1" 200 -
+2025-08-29 22:32:07,347 - werkzeug - INFO - 127.0.0.1 - - [29/Aug/2025 22:32:07] "POST /analyze HTTP/1.1" 200 -
+2025-08-29 22:32:22,364 - werkzeug - INFO - 127.0.0.1 - - [29/Aug/2025 22:32:22] "POST /analyze HTTP/1.1" 200 -
+2025-08-29 22:32:37,678 - werkzeug - INFO - 127.0.0.1 - - [29/Aug/2025 22:32:37] "POST /analyze HTTP/1.1" 200 -
+2025-08-29 22:32:52,682 - werkzeug - INFO - 127.0.0.1 - - [29/Aug/2025 22:32:52] "POST /analyze HTTP/1.1" 200 -
+2025-08-29 22:33:07,192 - werkzeug - INFO - 127.0.0.1 - - [29/Aug/2025 22:33:07] "GET /threejs-visualization HTTP/1.1" 200 -
+2025-08-29 22:33:07,458 - werkzeug - INFO - 127.0.0.1 - - [29/Aug/2025 22:33:07] "GET /api/topics-3d HTTP/1.1" 200 -

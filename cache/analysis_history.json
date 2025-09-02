@@ -1,0 +1,9 @@
+[
+  {
+    "timestamp": "2025-08-29T19:56:17.559919",
+    "success": true,
+    "message": "Analysis complete with 500 files",
+    "files_collected": 500,
+    "topics_discovered": 5
+  }
+]
