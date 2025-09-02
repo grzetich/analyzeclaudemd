@@ -11,6 +11,8 @@ import base64
 import time
 import re
 import nltk
+import gc
+import psutil
 from nltk.corpus import stopwords
 from nltk.stem import WordNetLemmatizer
 from nltk.tokenize import word_tokenize
@@ -104,6 +106,59 @@ ANALYSIS_TARGET_HOUR_GMT = 3  # 3 AM GMT
 MAX_HISTORY_ENTRIES = 30  # Keep 30 days of history
 last_analysis_thread = None
 scheduler_thread = None
+
+# Memory management functions
+def get_memory_usage():
+    """Get current memory usage in MB."""
+    try:
+        process = psutil.Process()
+        memory_info = process.memory_info()
+        return {
+            'rss_mb': round(memory_info.rss / 1024 / 1024, 1),  # Resident Set Size
+            'vms_mb': round(memory_info.vms / 1024 / 1024, 1),  # Virtual Memory Size
+        }
+    except:
+        return {'rss_mb': 0, 'vms_mb': 0}
+
+def log_memory_usage(context="", force_gc=False):
+    """Log current memory usage with optional garbage collection."""
+    try:
+        memory = get_memory_usage()
+        msg = f"Memory usage {context}: RSS={memory['rss_mb']}MB, VMS={memory['vms_mb']}MB"
+        
+        # Check for high memory usage
+        if memory['rss_mb'] > 400 or force_gc:  # Alert at 400MB RSS
+            logging.warning(f"High memory usage detected: {msg}")
+            if memory['rss_mb'] > 600:  # Emergency cleanup at 600MB
+                logging.error(f"Critical memory usage: {msg} - forcing garbage collection")
+                gc.collect()
+                gc.collect()  # Double GC like viberater
+                after_gc = get_memory_usage()
+                logging.info(f"After GC: RSS={after_gc['rss_mb']}MB, VMS={after_gc['vms_mb']}MB")
+        else:
+            logging.info(msg)
+            
+        return memory
+    except Exception as e:
+        logging.error(f"Error monitoring memory: {e}")
+        return {'rss_mb': 0, 'vms_mb': 0}
+
+def cleanup_memory():
+    """Force garbage collection and memory cleanup."""
+    try:
+        before = get_memory_usage()
+        gc.collect()
+        gc.collect()  # Double collection like viberater
+        after = get_memory_usage()
+        
+        freed_mb = before['rss_mb'] - after['rss_mb']
+        if freed_mb > 0:
+            logging.info(f"Memory cleanup freed {freed_mb:.1f}MB (RSS: {before['rss_mb']}MB -> {after['rss_mb']}MB)")
+        
+        return after
+    except Exception as e:
+        logging.error(f"Error during memory cleanup: {e}")
+        return get_memory_usage()
 
 # Configure logging
 def setup_logging():
@@ -571,6 +626,11 @@ def run_analysis_now():
                 analysis_logger.info("=== ANALYSIS RUN STARTED ===")
                 analysis_logger.info(f"Analysis timestamp: {analysis_start_time.isoformat()}")
             
+            # Initial memory check
+            initial_memory = log_memory_usage("at analysis start")
+            if analysis_logger:
+                analysis_logger.info(f"Initial memory: RSS={initial_memory['rss_mb']}MB, VMS={initial_memory['vms_mb']}MB")
+            
             if not GITHUB_TOKEN:
                 error_msg = "GitHub PAT not configured"
                 logging.error(error_msg)
@@ -585,6 +645,11 @@ def run_analysis_now():
                 analysis_logger.info("Starting GitHub file collection (max 500 files)...")
             
             collected_documents = get_claude_md_files(SEARCH_QUERY, HEADERS, max_files=500)
+            
+            # Memory check after collection
+            collection_memory = log_memory_usage("after GitHub collection")
+            if analysis_logger:
+                analysis_logger.info(f"Memory after collection: RSS={collection_memory['rss_mb']}MB, VMS={collection_memory['vms_mb']}MB")
             
             if not collected_documents:
                 error_msg = "No claude.md files found"
@@ -601,11 +666,19 @@ def run_analysis_now():
                 analysis_logger.info(f"Successfully collected {num_files} claude.md files")
                 analysis_logger.info("Starting LDA topic modeling analysis...")
             
+            # Pre-LDA memory cleanup
+            pre_lda_memory = cleanup_memory()
+            if analysis_logger:
+                analysis_logger.info(f"Memory before LDA: RSS={pre_lda_memory['rss_mb']}MB")
+            
             success, topics_data = perform_lda_and_visualize(collected_documents, num_topics=5)
             
-            # Clean up memory
+            # Clean up memory aggressively after LDA
             collected_documents.clear()
-            collected_documents = None
+            del collected_documents
+            post_lda_memory = cleanup_memory()
+            if analysis_logger:
+                analysis_logger.info(f"Memory after LDA cleanup: RSS={post_lda_memory['rss_mb']}MB")
             
             if success:
                 success_msg = f"Analysis complete with {num_files} files"
@@ -669,7 +742,7 @@ atexit.register(cleanup_temp_files)
 def get_claude_md_files(query, headers, max_files=100): # Limiting for MVP and rate limits
     """
     Searches GitHub for claude.md files and retrieves their content.
-    Handles pagination and basic rate limit adherence.
+    Handles pagination and basic rate limit adherence with memory monitoring.
     """
     all_file_contents = []
     page = 1
@@ -677,6 +750,9 @@ def get_claude_md_files(query, headers, max_files=100): # Limiting for MVP and r
 
     print(f"Starting GitHub file collection (max {max_files} files)...")
     logging.info(f"Starting GitHub file collection (max {max_files} files)...")
+    
+    # Initial memory check
+    initial_memory = log_memory_usage("at file collection start")
 
     while len(all_file_contents) < max_files:
         params = {
@@ -698,6 +774,15 @@ def get_claude_md_files(query, headers, max_files=100): # Limiting for MVP and r
             for item in items:
                 if len(all_file_contents) >= max_files:
                     break # Stop if max_files limit is reached
+
+                # Memory monitoring every 50 files (like viberater pattern)
+                if len(all_file_contents) % 50 == 0 and len(all_file_contents) > 0:
+                    current_memory = log_memory_usage(f"after {len(all_file_contents)} files")
+                    # Emergency cleanup if memory gets too high
+                    if current_memory['rss_mb'] > 500:
+                        logging.warning(f"High memory during collection: {current_memory['rss_mb']}MB - forcing cleanup")
+                        gc.collect()
+                        gc.collect()
 
                 download_url = item.get("download_url")
                 if download_url:
@@ -765,6 +850,11 @@ def get_claude_md_files(query, headers, max_files=100): # Limiting for MVP and r
       
     print(f"Finished collection. Total {len(all_file_contents)} files collected.")
     logging.info(f"Finished collection. Total {len(all_file_contents)} files collected.")
+    
+    # Final memory check after collection
+    final_memory = log_memory_usage("after file collection complete")
+    logging.info(f"Collection complete - final memory: RSS={final_memory['rss_mb']}MB")
+    
     return all_file_contents
 
 def preprocess_text(text):
@@ -780,22 +870,36 @@ def preprocess_text(text):
 
 def perform_lda_and_visualize(documents, num_topics=5):
     """
-    Performs LDA on the given documents and creates a simple HTML visualization.
+    Performs LDA on the given documents and creates a simple HTML visualization with memory monitoring.
     """
     if not documents:
         print("No documents provided for LDA analysis.")
         return False
 
-    # Preprocess documents into strings for CountVectorizer
+    # Memory check at start of LDA
+    lda_start_memory = log_memory_usage("at LDA start")
+
+    # Preprocess documents into strings for CountVectorizer with memory monitoring
     processed_docs = []
-    for doc in documents:
+    for i, doc in enumerate(documents):
         tokens = preprocess_text(doc)
         if tokens:
             processed_docs.append(' '.join(tokens))
+        
+        # Memory check every 100 documents during preprocessing
+        if i % 100 == 0 and i > 0:
+            current_memory = log_memory_usage(f"after preprocessing {i} documents")
+            if current_memory['rss_mb'] > 800:  # High threshold for preprocessing
+                logging.warning(f"High memory during preprocessing: {current_memory['rss_mb']}MB")
+                gc.collect()
     
     if not processed_docs:
         print("No valid documents after preprocessing for LDA analysis.")
         return False
+
+    # Memory check after preprocessing
+    preprocess_memory = log_memory_usage("after preprocessing complete")
+    logging.info(f"Preprocessing complete - memory: RSS={preprocess_memory['rss_mb']}MB")
 
     print(f"Starting LDA training with {len(processed_docs)} documents...")
     try:
@@ -808,6 +912,10 @@ def perform_lda_and_visualize(documents, num_topics=5):
         )
         doc_term_matrix = vectorizer.fit_transform(processed_docs)
         
+        # Memory check after vectorization
+        vectorize_memory = log_memory_usage("after vectorization")
+        logging.info(f"Vectorization complete - memory: RSS={vectorize_memory['rss_mb']}MB")
+        
         # Perform LDA
         lda_model = LatentDirichletAllocation(
             n_components=num_topics,
@@ -816,6 +924,10 @@ def perform_lda_and_visualize(documents, num_topics=5):
             learning_method='online'
         )
         lda_model.fit(doc_term_matrix)
+        
+        # Memory check after LDA training
+        lda_train_memory = log_memory_usage("after LDA training")
+        logging.info(f"LDA training complete - memory: RSS={lda_train_memory['rss_mb']}MB")
         
         # Get feature names
         feature_names = vectorizer.get_feature_names_out()
@@ -833,6 +945,12 @@ def perform_lda_and_visualize(documents, num_topics=5):
         
         # Create enhanced HTML visualization
         create_enhanced_visualization(lda_model, feature_names, num_topics, analysis_stats)
+        
+        # Final memory cleanup in LDA
+        del processed_docs, doc_term_matrix, lda_model, vectorizer
+        final_lda_memory = cleanup_memory()
+        logging.info(f"LDA complete with cleanup - final memory: RSS={final_lda_memory['rss_mb']}MB")
+        
         print(f"LDA visualization saved to {VIS_HTML_PATH}")
         return True, topics_data
     except Exception as e:
