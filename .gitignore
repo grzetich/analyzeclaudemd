@@ -43,3 +43,6 @@ Thumbs.db
 # Data files
 claude_md_files/
 collected_data.json
+
+# Documentation
+docs/
