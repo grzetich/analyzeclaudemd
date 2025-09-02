@@ -414,7 +414,7 @@
                     }
                     
                     // Show manual trigger button if no recent analysis
-                    if (data.message.includes('No analysis') || data.message.includes('analysis not')) {
+                    if (data.status === 'info' || data.message.includes('No recent analysis')) {
                         document.getElementById('manual-trigger').style.display = 'block';
                     }
                 } else {
