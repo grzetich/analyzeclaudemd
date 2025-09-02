@@ -267,6 +267,11 @@
                 <div class="loading-spinner"></div>
                 Loading analysis results...
             </div>
+            <div id="manual-trigger" style="display: none; text-align: center; margin-top: 15px;">
+                <button onclick="runManualAnalysis()" style="background: #667eea; color: white; border: none; padding: 10px 20px; border-radius: 5px; cursor: pointer;">
+                    🔄 Run New Analysis
+                </button>
+            </div>
         </div>
 
         <div class="view-options">
@@ -385,6 +390,20 @@
             const statusDiv = document.getElementById('status-message');
             
             try {
+                // First check if we have recent analysis results without triggering new analysis
+                const cacheResponse = await fetch('/api/database-stats');
+                const cacheData = await cacheResponse.json();
+                
+                if (cacheData.successful_runs > 0) {
+                    // We have existing data, load it
+                    statusDiv.innerHTML = 'Analysis completed. Last run: ' + new Date(cacheData.date_range.last_run).toLocaleDateString();
+                    statusDiv.className = 'status-message status-success';
+                    document.getElementById('manual-trigger').style.display = 'block';
+                    await loadStatistics();
+                    return;
+                }
+                
+                // No existing data, trigger analysis
                 const response = await fetch('/analyze', { method: 'POST' });
                 const data = await response.json();
                 analysisData = data;
@@ -432,7 +451,43 @@
             }
         }
 
-        // Auto-start analysis check when page loads
+        async function runManualAnalysis() {
+            const statusDiv = document.getElementById('status-message');
+            const manualTrigger = document.getElementById('manual-trigger');
+            
+            try {
+                // Hide manual trigger button and show loading
+                manualTrigger.style.display = 'none';
+                statusDiv.innerHTML = '<div class="loading-spinner"></div>Starting new analysis...';
+                statusDiv.className = 'status-message status-warning';
+                
+                const response = await fetch('/analyze', { method: 'POST' });
+                const data = await response.json();
+                
+                statusDiv.innerHTML = data.message;
+                statusDiv.className = 'status-message';
+                
+                if (data.status === 'success') {
+                    statusDiv.classList.add('status-success');
+                    await loadStatistics();
+                } else if (data.status === 'warning') {
+                    statusDiv.classList.add('status-warning');
+                    statusDiv.innerHTML = '<div class="loading-spinner"></div>' + data.message;
+                    
+                    // Poll for completion if analysis is running
+                    setTimeout(pollAnalysisStatus, 5000);
+                } else {
+                    statusDiv.classList.add('status-error');
+                    manualTrigger.style.display = 'block'; // Show button again on error
+                }
+            } catch (error) {
+                statusDiv.innerHTML = 'Error starting analysis: ' + error.message;
+                statusDiv.className = 'status-message status-error';
+                manualTrigger.style.display = 'block'; // Show button again on error
+            }
+        }
+
+        // Check for existing analysis results when page loads (only triggers new analysis if needed)
         window.addEventListener('DOMContentLoaded', function() {
             checkAnalysis();
         });
