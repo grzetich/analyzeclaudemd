@@ -16,7 +16,16 @@
       "Bash(git merge:*)",
       "Bash(git reset:*)",
       "Bash(git branch:*)",
-      "Bash(git pull:*)"
+      "Bash(git pull:*)",
+      "Bash(python:*)",
+      "Bash(curl:*)",
+      "Bash(git add:*)",
+      "Bash(git rm:*)",
+      "Bash(git commit:*)",
+      "Bash(git push:*)",
+      "WebSearch",
+      "Bash(pip install:*)",
+      "Bash(timeout:*)"
     ],
     "deny": [],
     "ask": []

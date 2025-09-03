@@ -80,3 +80,309 @@
 2025-08-29 22:32:52,682 - werkzeug - INFO - 127.0.0.1 - - [29/Aug/2025 22:32:52] "POST /analyze HTTP/1.1" 200 -
 2025-08-29 22:33:07,192 - werkzeug - INFO - 127.0.0.1 - - [29/Aug/2025 22:33:07] "GET /threejs-visualization HTTP/1.1" 200 -
 2025-08-29 22:33:07,458 - werkzeug - INFO - 127.0.0.1 - - [29/Aug/2025 22:33:07] "GET /api/topics-3d HTTP/1.1" 200 -
+2025-09-02 21:50:59,192 - root - INFO - Logging system initialized
+2025-09-02 21:50:59,204 - root - INFO - Database initialized successfully (SQLite)
+2025-09-02 21:50:59,204 - root - INFO - Database connection established
+2025-09-02 21:50:59,208 - root - INFO - Migrated data from cache/analysis_history.json
+2025-09-02 21:50:59,208 - root - INFO - Existing JSON data migration completed
+2025-09-02 21:50:59,217 - root - INFO - Analysis scheduler started - next run scheduled for 2025-09-02 23:00:00 GMT
+2025-09-02 21:50:59,217 - root - INFO - Claude.md analyzer started with daily 3 AM GMT scheduling
+2025-09-02 21:50:59,262 - werkzeug - INFO - [31m[1mWARNING: This is a development server. Do not use it in a production deployment. Use a production WSGI server instead.[0m
+ * Running on all addresses (0.0.0.0)
+ * Running on http://127.0.0.1:5000
+ * Running on http://192.168.68.61:5000
+2025-09-02 21:50:59,262 - werkzeug - INFO - [33mPress CTRL+C to quit[0m
+2025-09-02 21:50:59,266 - werkzeug - INFO -  * Restarting with stat
+2025-09-02 21:51:05,677 - root - INFO - Logging system initialized
+2025-09-02 21:51:05,679 - root - INFO - Database initialized successfully (SQLite)
+2025-09-02 21:51:05,679 - root - INFO - Database connection established
+2025-09-02 21:51:05,682 - root - INFO - Migrated data from cache/analysis_history.json
+2025-09-02 21:51:05,683 - root - INFO - Existing JSON data migration completed
+2025-09-02 21:51:05,692 - root - INFO - Analysis scheduler started - next run scheduled for 2025-09-02 23:00:00 GMT
+2025-09-02 21:51:05,693 - root - INFO - Claude.md analyzer started with daily 3 AM GMT scheduling
+2025-09-02 21:51:05,715 - werkzeug - WARNING -  * Debugger is active!
+2025-09-02 21:51:05,725 - werkzeug - INFO -  * Debugger PIN: 833-188-560
+2025-09-02 21:57:40,592 - root - INFO - Logging system initialized
+2025-09-02 21:57:40,607 - root - INFO - Database initialized successfully (SQLite)
+2025-09-02 21:57:40,607 - root - INFO - Database connection established
+2025-09-02 21:57:40,636 - root - INFO - Migrated data from cache/analysis_history.json
+2025-09-02 21:57:40,637 - root - INFO - Existing JSON data migration completed
+2025-09-02 21:57:40,647 - root - INFO - Analysis scheduler started - next run scheduled for 2025-09-02 23:00:00 GMT
+2025-09-02 21:57:40,648 - root - INFO - Claude.md analyzer started with daily 3 AM GMT scheduling
+2025-09-02 21:57:40,704 - werkzeug - INFO - [31m[1mWARNING: This is a development server. Do not use it in a production deployment. Use a production WSGI server instead.[0m
+ * Running on all addresses (0.0.0.0)
+ * Running on http://127.0.0.1:5000
+ * Running on http://192.168.68.61:5000
+2025-09-02 21:57:40,704 - werkzeug - INFO - [33mPress CTRL+C to quit[0m
+2025-09-02 21:57:40,709 - werkzeug - INFO -  * Restarting with stat
+2025-09-02 21:57:45,161 - root - INFO - Logging system initialized
+2025-09-02 21:57:45,163 - root - INFO - Database initialized successfully (SQLite)
+2025-09-02 21:57:45,163 - root - INFO - Database connection established
+2025-09-02 21:57:45,165 - root - INFO - Migrated data from cache/analysis_history.json
+2025-09-02 21:57:45,166 - root - INFO - Existing JSON data migration completed
+2025-09-02 21:57:45,171 - root - INFO - Analysis scheduler started - next run scheduled for 2025-09-02 23:00:00 GMT
+2025-09-02 21:57:45,172 - root - INFO - Claude.md analyzer started with daily 3 AM GMT scheduling
+2025-09-02 21:57:45,191 - werkzeug - WARNING -  * Debugger is active!
+2025-09-02 21:57:45,203 - werkzeug - INFO -  * Debugger PIN: 833-188-560
+2025-09-02 21:57:57,799 - werkzeug - INFO - 127.0.0.1 - - [02/Sep/2025 21:57:57] "GET / HTTP/1.1" 200 -
+2025-09-02 21:57:58,366 - werkzeug - INFO - 127.0.0.1 - - [02/Sep/2025 21:57:58] "GET /analyze HTTP/1.1" 200 -
+2025-09-02 21:57:58,404 - werkzeug - INFO - 127.0.0.1 - - [02/Sep/2025 21:57:58] "GET /api/topics-3d HTTP/1.1" 200 -
+2025-09-02 21:57:58,459 - werkzeug - INFO - 127.0.0.1 - - [02/Sep/2025 21:57:58] "GET /api/topics-3d HTTP/1.1" 200 -
+2025-09-02 21:57:59,094 - werkzeug - INFO - 127.0.0.1 - - [02/Sep/2025 21:57:59] "GET /static/favicon.ico HTTP/1.1" 200 -
+2025-09-02 21:57:59,119 - werkzeug - INFO - 127.0.0.1 - - [02/Sep/2025 21:57:59] "GET /static/favicon.svg HTTP/1.1" 200 -
+2025-09-02 21:58:16,685 - werkzeug - INFO - 127.0.0.1 - - [02/Sep/2025 21:58:16] "GET /topic-evolution HTTP/1.1" 200 -
+2025-09-02 21:58:16,980 - werkzeug - INFO - 127.0.0.1 - - [02/Sep/2025 21:58:16] "GET /api/topic-evolution HTTP/1.1" 200 -
+2025-09-02 21:58:17,197 - werkzeug - INFO - 127.0.0.1 - - [02/Sep/2025 21:58:17] "[36mGET /static/favicon.ico HTTP/1.1[0m" 304 -
+2025-09-02 21:58:20,844 - werkzeug - INFO - 127.0.0.1 - - [02/Sep/2025 21:58:20] "[33mGET /threejs-visualization HTTP/1.1[0m" 404 -
+2025-09-02 21:58:20,995 - werkzeug - INFO - 127.0.0.1 - - [02/Sep/2025 21:58:20] "[33mGET /favicon.ico HTTP/1.1[0m" 404 -
+2025-09-02 21:58:23,276 - werkzeug - INFO - 127.0.0.1 - - [02/Sep/2025 21:58:23] "[36mGET /static/favicon.ico HTTP/1.1[0m" 304 -
+2025-09-02 21:58:25,538 - werkzeug - INFO - 127.0.0.1 - - [02/Sep/2025 21:58:25] "GET / HTTP/1.1" 200 -
+2025-09-02 21:58:25,613 - werkzeug - INFO - 127.0.0.1 - - [02/Sep/2025 21:58:25] "GET /analyze HTTP/1.1" 200 -
+2025-09-02 21:58:25,631 - werkzeug - INFO - 127.0.0.1 - - [02/Sep/2025 21:58:25] "GET /api/topics-3d HTTP/1.1" 200 -
+2025-09-02 21:58:25,640 - werkzeug - INFO - 127.0.0.1 - - [02/Sep/2025 21:58:25] "GET /api/topics-3d HTTP/1.1" 200 -
+2025-09-02 21:58:25,823 - werkzeug - INFO - 127.0.0.1 - - [02/Sep/2025 21:58:25] "[36mGET /static/favicon.ico HTTP/1.1[0m" 304 -
+2025-09-02 21:58:35,757 - werkzeug - INFO - 127.0.0.1 - - [02/Sep/2025 21:58:35] "HEAD / HTTP/1.1" 200 -
+2025-09-02 21:58:58,510 - werkzeug - INFO - 127.0.0.1 - - [02/Sep/2025 21:58:58] "[36mGET /static/favicon.ico HTTP/1.1[0m" 304 -
+2025-09-02 21:59:02,289 - werkzeug - INFO - 127.0.0.1 - - [02/Sep/2025 21:59:02] "[36mGET /static/favicon.ico HTTP/1.1[0m" 304 -
+2025-09-02 21:59:04,852 - werkzeug - INFO - 127.0.0.1 - - [02/Sep/2025 21:59:04] "GET / HTTP/1.1" 200 -
+2025-09-02 21:59:04,921 - werkzeug - INFO - 127.0.0.1 - - [02/Sep/2025 21:59:04] "GET /analyze HTTP/1.1" 200 -
+2025-09-02 21:59:04,948 - werkzeug - INFO - 127.0.0.1 - - [02/Sep/2025 21:59:04] "GET /api/topics-3d HTTP/1.1" 200 -
+2025-09-02 21:59:04,990 - werkzeug - INFO - 127.0.0.1 - - [02/Sep/2025 21:59:04] "GET /api/topics-3d HTTP/1.1" 200 -
+2025-09-02 21:59:05,179 - werkzeug - INFO - 127.0.0.1 - - [02/Sep/2025 21:59:05] "[36mGET /static/favicon.ico HTTP/1.1[0m" 304 -
+2025-09-02 21:59:05,187 - werkzeug - INFO - 127.0.0.1 - - [02/Sep/2025 21:59:05] "[36mGET /static/favicon.svg HTTP/1.1[0m" 304 -
+2025-09-02 22:02:49,163 - werkzeug - INFO -  * Detected change in 'D:\\lib\\grzetich\\analyyzeclaude\\app.py', reloading
+2025-09-02 22:02:49,591 - werkzeug - INFO -  * Restarting with stat
+2025-09-02 22:02:54,300 - root - INFO - Logging system initialized
+2025-09-02 22:02:54,301 - root - INFO - Database initialized successfully (SQLite)
+2025-09-02 22:02:54,302 - root - INFO - Database connection established
+2025-09-02 22:02:54,304 - root - INFO - Migrated data from cache/analysis_history.json
+2025-09-02 22:02:54,304 - root - INFO - Existing JSON data migration completed
+2025-09-02 22:02:54,310 - root - INFO - Analysis scheduler started - next run scheduled for 2025-09-02 23:00:00 GMT
+2025-09-02 22:02:54,310 - root - INFO - Claude.md analyzer started with daily 3 AM GMT scheduling
+2025-09-02 22:02:54,329 - werkzeug - WARNING -  * Debugger is active!
+2025-09-02 22:02:54,338 - werkzeug - INFO -  * Debugger PIN: 833-188-560
+2025-09-02 22:03:19,321 - werkzeug - INFO - 127.0.0.1 - - [02/Sep/2025 22:03:19] "GET / HTTP/1.1" 200 -
+2025-09-02 22:03:19,443 - werkzeug - INFO - 127.0.0.1 - - [02/Sep/2025 22:03:19] "[33mGET /visualization HTTP/1.1[0m" 404 -
+2025-09-02 22:03:19,451 - werkzeug - INFO - 127.0.0.1 - - [02/Sep/2025 22:03:19] "GET /analyze HTTP/1.1" 200 -
+2025-09-02 22:03:19,473 - werkzeug - INFO - 127.0.0.1 - - [02/Sep/2025 22:03:19] "GET /api/topics-3d HTTP/1.1" 200 -
+2025-09-02 22:03:19,920 - werkzeug - INFO - 127.0.0.1 - - [02/Sep/2025 22:03:19] "[36mGET /static/favicon.ico HTTP/1.1[0m" 304 -
+2025-09-02 22:03:19,935 - werkzeug - INFO - 127.0.0.1 - - [02/Sep/2025 22:03:19] "[36mGET /static/favicon.svg HTTP/1.1[0m" 304 -
+2025-09-02 22:03:22,003 - werkzeug - INFO - 127.0.0.1 - - [02/Sep/2025 22:03:22] "[33mGET /visualization HTTP/1.1[0m" 404 -
+2025-09-02 22:03:39,605 - werkzeug - INFO - 127.0.0.1 - - [02/Sep/2025 22:03:39] "GET /analyze HTTP/1.1" 200 -
+2025-09-02 22:04:14,610 - root - INFO - Logging system initialized
+2025-09-02 22:04:14,613 - root - INFO - Database initialized successfully (SQLite)
+2025-09-02 22:04:14,613 - root - INFO - Database connection established
+2025-09-02 22:04:14,620 - root - INFO - Migrated data from cache/analysis_history.json
+2025-09-02 22:04:14,621 - root - INFO - Existing JSON data migration completed
+2025-09-02 22:04:14,626 - root - INFO - Analysis scheduler started - next run scheduled for 2025-09-02 23:00:00 GMT
+2025-09-02 22:04:14,627 - root - INFO - Claude.md analyzer started with daily 3 AM GMT scheduling
+2025-09-02 22:04:22,027 - werkzeug - INFO -  * Detected change in 'D:\\lib\\grzetich\\analyyzeclaude\\generate_viz_from_cache.py', reloading
+2025-09-02 22:04:22,482 - werkzeug - INFO -  * Restarting with stat
+2025-09-02 22:04:28,680 - root - INFO - Logging system initialized
+2025-09-02 22:04:28,681 - root - INFO - Database initialized successfully (SQLite)
+2025-09-02 22:04:28,681 - root - INFO - Database connection established
+2025-09-02 22:04:28,684 - root - INFO - Migrated data from cache/analysis_history.json
+2025-09-02 22:04:28,684 - root - INFO - Existing JSON data migration completed
+2025-09-02 22:04:28,692 - root - INFO - Analysis scheduler started - next run scheduled for 2025-09-02 23:00:00 GMT
+2025-09-02 22:04:28,693 - root - INFO - Claude.md analyzer started with daily 3 AM GMT scheduling
+2025-09-02 22:04:28,716 - werkzeug - WARNING -  * Debugger is active!
+2025-09-02 22:04:28,728 - werkzeug - INFO -  * Debugger PIN: 833-188-560
+2025-09-02 22:04:40,811 - root - INFO - Logging system initialized
+2025-09-02 22:04:40,815 - root - INFO - Database initialized successfully (SQLite)
+2025-09-02 22:04:40,815 - root - INFO - Database connection established
+2025-09-02 22:04:40,818 - root - INFO - Migrated data from cache/analysis_history.json
+2025-09-02 22:04:40,819 - root - INFO - Existing JSON data migration completed
+2025-09-02 22:04:40,826 - root - INFO - Analysis scheduler started - next run scheduled for 2025-09-02 23:00:00 GMT
+2025-09-02 22:04:40,827 - root - INFO - Claude.md analyzer started with daily 3 AM GMT scheduling
+2025-09-02 22:04:56,307 - werkzeug - INFO -  * Detected change in 'D:\\lib\\grzetich\\analyyzeclaude\\generate_viz_from_cache.py', reloading
+2025-09-02 22:04:56,661 - werkzeug - INFO -  * Restarting with stat
+2025-09-02 22:05:02,647 - root - INFO - Logging system initialized
+2025-09-02 22:05:02,649 - root - INFO - Database initialized successfully (SQLite)
+2025-09-02 22:05:02,649 - root - INFO - Database connection established
+2025-09-02 22:05:02,652 - root - INFO - Migrated data from cache/analysis_history.json
+2025-09-02 22:05:02,653 - root - INFO - Existing JSON data migration completed
+2025-09-02 22:05:02,662 - root - INFO - Analysis scheduler started - next run scheduled for 2025-09-02 23:00:00 GMT
+2025-09-02 22:05:02,662 - root - INFO - Claude.md analyzer started with daily 3 AM GMT scheduling
+2025-09-02 22:05:02,685 - werkzeug - WARNING -  * Debugger is active!
+2025-09-02 22:05:02,693 - werkzeug - INFO -  * Debugger PIN: 833-188-560
+2025-09-02 22:05:31,163 - werkzeug - INFO -  * Detected change in 'D:\\lib\\grzetich\\analyyzeclaude\\create_simple_viz.py', reloading
+2025-09-02 22:05:31,495 - werkzeug - INFO -  * Restarting with stat
+2025-09-02 22:05:37,560 - root - INFO - Logging system initialized
+2025-09-02 22:05:37,561 - root - INFO - Database initialized successfully (SQLite)
+2025-09-02 22:05:37,561 - root - INFO - Database connection established
+2025-09-02 22:05:37,564 - root - INFO - Migrated data from cache/analysis_history.json
+2025-09-02 22:05:37,564 - root - INFO - Existing JSON data migration completed
+2025-09-02 22:05:37,574 - root - INFO - Analysis scheduler started - next run scheduled for 2025-09-02 23:00:00 GMT
+2025-09-02 22:05:37,574 - root - INFO - Claude.md analyzer started with daily 3 AM GMT scheduling
+2025-09-02 22:05:37,600 - werkzeug - WARNING -  * Debugger is active!
+2025-09-02 22:05:37,609 - werkzeug - INFO -  * Debugger PIN: 833-188-560
+2025-09-02 22:05:49,303 - werkzeug - INFO - 127.0.0.1 - - [02/Sep/2025 22:05:49] "HEAD /visualization HTTP/1.1" 200 -
+2025-09-02 22:06:35,493 - werkzeug - INFO - 127.0.0.1 - - [02/Sep/2025 22:06:35] "GET / HTTP/1.1" 200 -
+2025-09-02 22:06:35,566 - werkzeug - INFO - 127.0.0.1 - - [02/Sep/2025 22:06:35] "GET /visualization HTTP/1.1" 200 -
+2025-09-02 22:06:35,581 - werkzeug - INFO - 127.0.0.1 - - [02/Sep/2025 22:06:35] "GET /analyze HTTP/1.1" 200 -
+2025-09-02 22:06:35,594 - werkzeug - INFO - 127.0.0.1 - - [02/Sep/2025 22:06:35] "GET /api/topics-3d HTTP/1.1" 200 -
+2025-09-02 22:06:35,622 - werkzeug - INFO - 127.0.0.1 - - [02/Sep/2025 22:06:35] "GET /api/topics-3d HTTP/1.1" 200 -
+2025-09-02 22:06:35,847 - werkzeug - INFO - 127.0.0.1 - - [02/Sep/2025 22:06:35] "[36mGET /static/favicon.ico HTTP/1.1[0m" 304 -
+2025-09-02 22:06:35,856 - werkzeug - INFO - 127.0.0.1 - - [02/Sep/2025 22:06:35] "[36mGET /static/favicon.svg HTTP/1.1[0m" 304 -
+2025-09-02 22:07:00,308 - werkzeug - INFO - 127.0.0.1 - - [02/Sep/2025 22:07:00] "GET /visualization HTTP/1.1" 200 -
+2025-09-02 22:07:20,182 - werkzeug - INFO - 127.0.0.1 - - [02/Sep/2025 22:07:20] "GET / HTTP/1.1" 200 -
+2025-09-02 22:07:20,266 - werkzeug - INFO - 127.0.0.1 - - [02/Sep/2025 22:07:20] "GET /visualization HTTP/1.1" 200 -
+2025-09-02 22:07:20,268 - werkzeug - INFO - 127.0.0.1 - - [02/Sep/2025 22:07:20] "GET /analyze HTTP/1.1" 200 -
+2025-09-02 22:07:20,294 - werkzeug - INFO - 127.0.0.1 - - [02/Sep/2025 22:07:20] "GET /api/topics-3d HTTP/1.1" 200 -
+2025-09-02 22:07:20,345 - werkzeug - INFO - 127.0.0.1 - - [02/Sep/2025 22:07:20] "GET /api/topics-3d HTTP/1.1" 200 -
+2025-09-02 22:07:20,419 - werkzeug - INFO - 127.0.0.1 - - [02/Sep/2025 22:07:20] "[36mGET /static/favicon.ico HTTP/1.1[0m" 304 -
+2025-09-02 22:07:20,433 - werkzeug - INFO - 127.0.0.1 - - [02/Sep/2025 22:07:20] "[36mGET /static/favicon.svg HTTP/1.1[0m" 304 -
+2025-09-02 22:07:22,284 - werkzeug - INFO - 127.0.0.1 - - [02/Sep/2025 22:07:22] "GET / HTTP/1.1" 200 -
+2025-09-02 22:07:22,345 - werkzeug - INFO - 127.0.0.1 - - [02/Sep/2025 22:07:22] "GET /visualization HTTP/1.1" 200 -
+2025-09-02 22:07:22,361 - werkzeug - INFO - 127.0.0.1 - - [02/Sep/2025 22:07:22] "GET /analyze HTTP/1.1" 200 -
+2025-09-02 22:07:22,372 - werkzeug - INFO - 127.0.0.1 - - [02/Sep/2025 22:07:22] "GET /api/topics-3d HTTP/1.1" 200 -
+2025-09-02 22:07:22,406 - werkzeug - INFO - 127.0.0.1 - - [02/Sep/2025 22:07:22] "GET /api/topics-3d HTTP/1.1" 200 -
+2025-09-02 22:07:22,515 - werkzeug - INFO - 127.0.0.1 - - [02/Sep/2025 22:07:22] "[36mGET /static/favicon.ico HTTP/1.1[0m" 304 -
+2025-09-02 22:07:22,528 - werkzeug - INFO - 127.0.0.1 - - [02/Sep/2025 22:07:22] "[36mGET /static/favicon.svg HTTP/1.1[0m" 304 -
+2025-09-02 22:07:25,980 - werkzeug - INFO - 127.0.0.1 - - [02/Sep/2025 22:07:25] "GET /visualization HTTP/1.1" 200 -
+2025-09-02 22:08:42,067 - werkzeug - INFO -  * Detected change in 'D:\\lib\\grzetich\\analyyzeclaude\\app.py', reloading
+2025-09-02 22:08:42,449 - werkzeug - INFO -  * Restarting with stat
+2025-09-02 22:08:47,252 - root - INFO - Logging system initialized
+2025-09-02 22:08:47,253 - root - ERROR - Database initialization failed: name 'AnalysisDatabase' is not defined
+2025-09-02 22:08:47,261 - root - INFO - Analysis scheduler started - next run scheduled for 2025-09-02 23:00:00 GMT
+2025-09-02 22:08:47,262 - root - INFO - Claude.md analyzer started with daily 3 AM GMT scheduling
+2025-09-02 22:08:47,283 - werkzeug - WARNING -  * Debugger is active!
+2025-09-02 22:08:47,290 - werkzeug - INFO -  * Debugger PIN: 833-188-560
+2025-09-02 22:09:05,534 - werkzeug - INFO -  * Detected change in 'D:\\lib\\grzetich\\analyyzeclaude\\app.py', reloading
+2025-09-02 22:09:05,897 - werkzeug - INFO -  * Restarting with stat
+2025-09-02 22:09:10,293 - root - INFO - Logging system initialized
+2025-09-02 22:09:10,294 - root - INFO - Using JSON file storage (no database)
+2025-09-02 22:09:10,294 - root - INFO - Existing JSON data migration completed
+2025-09-02 22:09:10,301 - root - INFO - Analysis scheduler started - next run scheduled for 2025-09-02 23:00:00 GMT
+2025-09-02 22:09:10,302 - root - INFO - Claude.md analyzer started with daily 3 AM GMT scheduling
+2025-09-02 22:09:10,324 - werkzeug - WARNING -  * Debugger is active!
+2025-09-02 22:09:10,335 - werkzeug - INFO -  * Debugger PIN: 833-188-560
+2025-09-02 22:09:28,653 - werkzeug - INFO -  * Detected change in 'D:\\lib\\grzetich\\analyyzeclaude\\app.py', reloading
+2025-09-02 22:09:28,981 - werkzeug - INFO -  * Restarting with stat
+2025-09-02 22:09:33,398 - root - INFO - Logging system initialized
+2025-09-02 22:09:33,398 - root - INFO - Using JSON file storage (no database)
+2025-09-02 22:09:33,398 - root - INFO - Existing JSON data migration completed
+2025-09-02 22:09:33,404 - root - INFO - Analysis scheduler started - next run scheduled for 2025-09-02 23:00:00 GMT
+2025-09-02 22:09:33,404 - root - INFO - Claude.md analyzer started with daily 3 AM GMT scheduling
+2025-09-02 22:09:33,423 - werkzeug - WARNING -  * Debugger is active!
+2025-09-02 22:09:33,430 - werkzeug - INFO -  * Debugger PIN: 833-188-560
+2025-09-02 22:09:56,734 - werkzeug - INFO -  * Detected change in 'D:\\lib\\grzetich\\analyyzeclaude\\app.py', reloading
+2025-09-02 22:09:57,090 - werkzeug - INFO -  * Restarting with stat
+2025-09-02 22:10:02,473 - root - INFO - Logging system initialized
+2025-09-02 22:10:02,473 - root - INFO - Using JSON file storage (no database)
+2025-09-02 22:10:02,474 - root - INFO - Existing JSON data migration completed
+2025-09-02 22:10:02,480 - root - INFO - Analysis scheduler started - next run scheduled for 2025-09-02 23:00:00 GMT
+2025-09-02 22:10:02,480 - root - INFO - Claude.md analyzer started with daily 3 AM GMT scheduling
+2025-09-02 22:10:02,500 - werkzeug - WARNING -  * Debugger is active!
+2025-09-02 22:10:02,508 - werkzeug - INFO -  * Debugger PIN: 833-188-560
+2025-09-02 22:10:07,763 - werkzeug - INFO -  * Detected change in 'D:\\lib\\grzetich\\analyyzeclaude\\app.py', reloading
+2025-09-02 22:10:08,243 - werkzeug - INFO -  * Restarting with stat
+2025-09-02 22:10:17,092 - root - INFO - Logging system initialized
+2025-09-02 22:10:17,092 - root - INFO - Using JSON file storage (no database)
+2025-09-02 22:10:17,092 - root - INFO - Existing JSON data migration completed
+2025-09-02 22:10:17,109 - root - INFO - Analysis scheduler started - next run scheduled for 2025-09-02 23:00:00 GMT
+2025-09-02 22:10:17,109 - root - INFO - Claude.md analyzer started with daily 3 AM GMT scheduling
+2025-09-02 22:10:17,157 - werkzeug - WARNING -  * Debugger is active!
+2025-09-02 22:10:17,175 - werkzeug - INFO -  * Debugger PIN: 833-188-560
+2025-09-02 22:10:22,311 - werkzeug - INFO -  * Detected change in 'D:\\lib\\grzetich\\analyyzeclaude\\app.py', reloading
+2025-09-02 22:10:22,802 - werkzeug - INFO -  * Restarting with stat
+2025-09-02 22:10:29,438 - root - INFO - Logging system initialized
+2025-09-02 22:10:29,438 - root - INFO - Using JSON file storage (no database)
+2025-09-02 22:10:29,439 - root - INFO - Existing JSON data migration completed
+2025-09-02 22:10:29,461 - root - INFO - Analysis scheduler started - next run scheduled for 2025-09-02 23:00:00 GMT
+2025-09-02 22:10:29,461 - root - INFO - Claude.md analyzer started with daily 3 AM GMT scheduling
+2025-09-02 22:10:29,492 - werkzeug - WARNING -  * Debugger is active!
+2025-09-02 22:10:29,526 - werkzeug - INFO -  * Debugger PIN: 833-188-560
+2025-09-02 22:10:33,684 - werkzeug - INFO -  * Detected change in 'D:\\lib\\grzetich\\analyyzeclaude\\app.py', reloading
+2025-09-02 22:10:34,373 - werkzeug - INFO -  * Restarting with stat
+2025-09-02 22:10:40,260 - root - INFO - Logging system initialized
+2025-09-02 22:10:40,261 - root - INFO - Using JSON file storage (no database)
+2025-09-02 22:10:40,261 - root - INFO - Existing JSON data migration completed
+2025-09-02 22:10:40,267 - root - INFO - Analysis scheduler started - next run scheduled for 2025-09-02 23:00:00 GMT
+2025-09-02 22:10:40,267 - root - INFO - Claude.md analyzer started with daily 3 AM GMT scheduling
+2025-09-02 22:10:40,291 - werkzeug - WARNING -  * Debugger is active!
+2025-09-02 22:10:40,299 - werkzeug - INFO -  * Debugger PIN: 833-188-560
+2025-09-02 22:10:51,846 - werkzeug - INFO - 127.0.0.1 - - [02/Sep/2025 22:10:51] "HEAD / HTTP/1.1" 200 -
+2025-09-02 22:10:57,001 - werkzeug - INFO - 127.0.0.1 - - [02/Sep/2025 22:10:57] "[33mHEAD /visualization HTTP/1.1[0m" 404 -
+2025-09-02 22:11:08,834 - werkzeug - INFO - 127.0.0.1 - - [02/Sep/2025 22:11:08] "HEAD /visualization HTTP/1.1" 200 -
+2025-09-02 22:11:14,293 - werkzeug - INFO - 127.0.0.1 - - [02/Sep/2025 22:11:14] "GET /api/database-stats HTTP/1.1" 200 -
+2025-09-02 22:12:48,703 - werkzeug - INFO - 127.0.0.1 - - [02/Sep/2025 22:12:48] "GET / HTTP/1.1" 200 -
+2025-09-02 22:12:48,815 - werkzeug - INFO - 127.0.0.1 - - [02/Sep/2025 22:12:48] "GET /visualization HTTP/1.1" 200 -
+2025-09-02 22:12:48,831 - werkzeug - INFO - 127.0.0.1 - - [02/Sep/2025 22:12:48] "GET /analyze HTTP/1.1" 200 -
+2025-09-02 22:12:48,857 - werkzeug - INFO - 127.0.0.1 - - [02/Sep/2025 22:12:48] "GET /api/topics-3d HTTP/1.1" 200 -
+2025-09-02 22:12:48,876 - werkzeug - INFO - 127.0.0.1 - - [02/Sep/2025 22:12:48] "GET /api/topics-3d HTTP/1.1" 200 -
+2025-09-02 22:12:49,273 - werkzeug - INFO - 127.0.0.1 - - [02/Sep/2025 22:12:49] "[36mGET /static/favicon.ico HTTP/1.1[0m" 304 -
+2025-09-02 22:12:49,283 - werkzeug - INFO - 127.0.0.1 - - [02/Sep/2025 22:12:49] "[36mGET /static/favicon.svg HTTP/1.1[0m" 304 -
+2025-09-02 22:12:55,046 - werkzeug - INFO - 127.0.0.1 - - [02/Sep/2025 22:12:55] "GET /visualization HTTP/1.1" 200 -
+2025-09-02 22:18:42,117 - werkzeug - INFO -  * Detected change in 'D:\\lib\\grzetich\\analyyzeclaude\\app.py', reloading
+2025-09-02 22:18:42,471 - werkzeug - INFO -  * Restarting with stat
+2025-09-02 22:18:47,783 - root - INFO - Logging system initialized
+2025-09-02 22:18:47,783 - root - INFO - Using JSON file storage (no database)
+2025-09-02 22:18:47,784 - root - INFO - Existing JSON data migration completed
+2025-09-02 22:18:47,792 - root - INFO - Analysis scheduler started - next run scheduled for 2025-09-02 23:00:00 GMT
+2025-09-02 22:18:47,792 - root - INFO - Claude.md analyzer started with daily 3 AM GMT scheduling
+2025-09-02 22:18:47,813 - werkzeug - WARNING -  * Debugger is active!
+2025-09-02 22:18:47,825 - werkzeug - INFO -  * Debugger PIN: 833-188-560
+2025-09-02 22:19:00,027 - werkzeug - INFO -  * Detected change in 'D:\\lib\\grzetich\\analyyzeclaude\\create_simple_viz.py', reloading
+2025-09-02 22:19:00,516 - werkzeug - INFO -  * Restarting with stat
+2025-09-02 22:19:05,561 - root - INFO - Logging system initialized
+2025-09-02 22:19:05,561 - root - INFO - Using JSON file storage (no database)
+2025-09-02 22:19:05,562 - root - INFO - Existing JSON data migration completed
+2025-09-02 22:19:05,568 - root - INFO - Analysis scheduler started - next run scheduled for 2025-09-02 23:00:00 GMT
+2025-09-02 22:19:05,568 - root - INFO - Claude.md analyzer started with daily 3 AM GMT scheduling
+2025-09-02 22:19:05,588 - werkzeug - WARNING -  * Debugger is active!
+2025-09-02 22:19:05,602 - werkzeug - INFO -  * Debugger PIN: 833-188-560
+2025-09-02 22:19:06,666 - werkzeug - INFO -  * Detected change in 'D:\\lib\\grzetich\\analyyzeclaude\\create_simple_viz.py', reloading
+2025-09-02 22:19:07,112 - werkzeug - INFO -  * Restarting with stat
+2025-09-02 22:19:12,737 - root - INFO - Logging system initialized
+2025-09-02 22:19:12,737 - root - INFO - Using JSON file storage (no database)
+2025-09-02 22:19:12,738 - root - INFO - Existing JSON data migration completed
+2025-09-02 22:19:12,744 - root - INFO - Analysis scheduler started - next run scheduled for 2025-09-02 23:00:00 GMT
+2025-09-02 22:19:12,744 - root - INFO - Claude.md analyzer started with daily 3 AM GMT scheduling
+2025-09-02 22:19:12,763 - werkzeug - WARNING -  * Debugger is active!
+2025-09-02 22:19:12,770 - werkzeug - INFO -  * Debugger PIN: 833-188-560
+2025-09-02 22:21:50,390 - werkzeug - INFO - 127.0.0.1 - - [02/Sep/2025 22:21:50] "GET / HTTP/1.1" 200 -
+2025-09-02 22:21:50,494 - werkzeug - INFO - 127.0.0.1 - - [02/Sep/2025 22:21:50] "GET /analyze HTTP/1.1" 200 -
+2025-09-02 22:21:50,524 - werkzeug - INFO - 127.0.0.1 - - [02/Sep/2025 22:21:50] "GET /api/topics-3d HTTP/1.1" 200 -
+2025-09-02 22:21:50,538 - werkzeug - INFO - 127.0.0.1 - - [02/Sep/2025 22:21:50] "GET /api/topics-3d HTTP/1.1" 200 -
+2025-09-02 22:21:50,558 - werkzeug - INFO - 127.0.0.1 - - [02/Sep/2025 22:21:50] "GET /visualization HTTP/1.1" 200 -
+2025-09-02 22:21:50,994 - werkzeug - INFO - 127.0.0.1 - - [02/Sep/2025 22:21:50] "[36mGET /static/favicon.ico HTTP/1.1[0m" 304 -
+2025-09-02 22:21:51,004 - werkzeug - INFO - 127.0.0.1 - - [02/Sep/2025 22:21:51] "[36mGET /static/favicon.svg HTTP/1.1[0m" 304 -
+2025-09-02 22:21:55,778 - werkzeug - INFO - 127.0.0.1 - - [02/Sep/2025 22:21:55] "GET /how-it-works HTTP/1.1" 200 -
+2025-09-02 22:21:55,840 - werkzeug - INFO - 127.0.0.1 - - [02/Sep/2025 22:21:55] "GET /static/style.css HTTP/1.1" 200 -
+2025-09-02 22:21:56,027 - werkzeug - INFO - 127.0.0.1 - - [02/Sep/2025 22:21:56] "[36mGET /static/favicon.ico HTTP/1.1[0m" 304 -
+2025-09-02 22:22:27,749 - werkzeug - INFO - 127.0.0.1 - - [02/Sep/2025 22:22:27] "GET / HTTP/1.1" 200 -
+2025-09-02 22:22:27,832 - werkzeug - INFO - 127.0.0.1 - - [02/Sep/2025 22:22:27] "GET /visualization HTTP/1.1" 200 -
+2025-09-02 22:22:27,843 - werkzeug - INFO - 127.0.0.1 - - [02/Sep/2025 22:22:27] "GET /analyze HTTP/1.1" 200 -
+2025-09-02 22:22:27,849 - werkzeug - INFO - 127.0.0.1 - - [02/Sep/2025 22:22:27] "GET /api/topics-3d HTTP/1.1" 200 -
+2025-09-02 22:22:27,894 - werkzeug - INFO - 127.0.0.1 - - [02/Sep/2025 22:22:27] "GET /api/topics-3d HTTP/1.1" 200 -
+2025-09-02 22:22:28,013 - werkzeug - INFO - 127.0.0.1 - - [02/Sep/2025 22:22:28] "[36mGET /static/favicon.ico HTTP/1.1[0m" 304 -
+2025-09-02 22:22:35,685 - werkzeug - INFO - 127.0.0.1 - - [02/Sep/2025 22:22:35] "GET /topic-evolution HTTP/1.1" 200 -
+2025-09-02 22:22:35,777 - werkzeug - INFO - 127.0.0.1 - - [02/Sep/2025 22:22:35] "GET /api/topic-evolution HTTP/1.1" 200 -
+2025-09-02 22:22:35,877 - werkzeug - INFO - 127.0.0.1 - - [02/Sep/2025 22:22:35] "[36mGET /static/favicon.ico HTTP/1.1[0m" 304 -
+2025-09-02 22:22:41,883 - werkzeug - INFO - 127.0.0.1 - - [02/Sep/2025 22:22:41] "GET / HTTP/1.1" 200 -
+2025-09-02 22:22:41,990 - werkzeug - INFO - 127.0.0.1 - - [02/Sep/2025 22:22:41] "GET /visualization HTTP/1.1" 200 -
+2025-09-02 22:22:41,998 - werkzeug - INFO - 127.0.0.1 - - [02/Sep/2025 22:22:41] "GET /analyze HTTP/1.1" 200 -
+2025-09-02 22:22:42,006 - werkzeug - INFO - 127.0.0.1 - - [02/Sep/2025 22:22:42] "GET /api/topics-3d HTTP/1.1" 200 -
+2025-09-02 22:22:42,037 - werkzeug - INFO - 127.0.0.1 - - [02/Sep/2025 22:22:42] "GET /api/topics-3d HTTP/1.1" 200 -
+2025-09-02 22:22:42,153 - werkzeug - INFO - 127.0.0.1 - - [02/Sep/2025 22:22:42] "[36mGET /static/favicon.ico HTTP/1.1[0m" 304 -
+2025-09-02 22:23:45,331 - werkzeug - INFO -  * Detected change in 'D:\\lib\\grzetich\\analyyzeclaude\\app.py', reloading
+2025-09-02 22:23:45,947 - werkzeug - INFO -  * Restarting with stat
+2025-09-02 22:23:51,759 - root - INFO - Logging system initialized
+2025-09-02 22:23:51,759 - root - INFO - Using JSON file storage (no database)
+2025-09-02 22:23:51,759 - root - INFO - Existing JSON data migration completed
+2025-09-02 22:23:51,765 - root - INFO - Analysis scheduler started - next run scheduled for 2025-09-02 23:00:00 GMT
+2025-09-02 22:23:51,766 - root - INFO - Claude.md analyzer started with daily 3 AM GMT scheduling
+2025-09-02 22:23:51,790 - werkzeug - WARNING -  * Debugger is active!
+2025-09-02 22:23:51,802 - werkzeug - INFO -  * Debugger PIN: 833-188-560
+2025-09-02 22:23:58,000 - werkzeug - INFO -  * Detected change in 'D:\\lib\\grzetich\\analyyzeclaude\\app.py', reloading
+2025-09-02 22:23:58,636 - werkzeug - INFO -  * Restarting with stat
+2025-09-02 22:24:04,745 - root - INFO - Logging system initialized
+2025-09-02 22:24:04,745 - root - INFO - Using JSON file storage (no database)
+2025-09-02 22:24:04,746 - root - INFO - Existing JSON data migration completed
+2025-09-02 22:24:04,752 - root - INFO - Analysis scheduler started - next run scheduled for 2025-09-02 23:00:00 GMT
+2025-09-02 22:24:04,752 - root - INFO - Claude.md analyzer started with daily 3 AM GMT scheduling
+2025-09-02 22:24:04,774 - werkzeug - WARNING -  * Debugger is active!
+2025-09-02 22:24:04,787 - werkzeug - INFO -  * Debugger PIN: 833-188-560
+2025-09-02 22:24:26,162 - werkzeug - INFO - 127.0.0.1 - - [02/Sep/2025 22:24:26] "HEAD / HTTP/1.1" 200 -
+2025-09-02 22:30:40,979 - werkzeug - INFO - 127.0.0.1 - - [02/Sep/2025 22:30:40] "[33mGET /visualization HTTP/1.1[0m" 404 -

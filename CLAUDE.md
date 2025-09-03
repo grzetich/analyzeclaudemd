@@ -79,3 +79,4 @@ This tool enables analysis of:
 - Best practices identification in Claude.md files
 
 Perfect for researchers studying AI tool adoption, developers understanding Claude usage patterns, or teams wanting to benchmark their Claude documentation against the broader ecosystem.
+- Don't change the architecture (like adding a database where there wasn't one) without asking and receiving approval first.
