@@ -135,10 +135,22 @@
         <div class="step">
             <h3>Step 1: Data Collection</h3>
             <p>The app searches GitHub for files named <code>claude.md</code> (case-insensitive) using the GitHub API. It collects up to 500 files from public repositories to manage API rate limits and processing time.</p>
+            
+            <h4 style="color: #0056b3; margin-top: 20px; margin-bottom: 10px;">📊 File Selection Process:</h4>
             <ul>
-                <li>Uses GitHub's Code Search API to find relevant files</li>
+                <li><strong>Search Method:</strong> Uses GitHub's Code Search API with query <code>filename:claude.md</code></li>
+                <li><strong>Selection Criteria:</strong> <strong>NOT random sampling</strong> - follows GitHub's "best match" algorithm</li>
+                <li><strong>GitHub's Ordering:</strong> Results prioritize popular, recently active, and well-maintained repositories</li>
+                <li><strong>Collection Process:</strong> Takes the first 500 results in order (100 files per API page)</li>
+                <li><strong>Bias Implications:</strong> Analysis tends to reflect "best practices" from popular repos rather than representing all Claude.md files equally</li>
+            </ul>
+            
+            <h4 style="color: #0056b3; margin-top: 20px; margin-bottom: 10px;">🔧 Technical Details:</h4>
+            <ul>
+                <li>Uses GitHub's Code Search API with pagination (100 files per request)</li>
                 <li>Falls back to GitHub Contents API for repositories without direct download URLs</li>
                 <li>Respects GitHub API rate limits (5,000 requests/hour with authentication)</li>
+                <li>Memory monitoring with garbage collection every 50 files</li>
             </ul>
         </div>
 

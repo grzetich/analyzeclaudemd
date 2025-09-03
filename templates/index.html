@@ -297,7 +297,7 @@
                 <h3>Topic Visualization</h3>
             </div>
             <div class="viz-content" id="vizContent">
-                <!-- Visualization content will be loaded here -->
+                <iframe src="/visualization" style="width: 100%; height: 600px; border: none; border-radius: 8px;"></iframe>
             </div>
         </div>
 
@@ -430,6 +430,7 @@
         // Check analysis status when page loads (without triggering new analysis)
         window.addEventListener('DOMContentLoaded', function() {
             checkAnalysisStatus();
+            loadStatistics();
         });
     </script>
 </body>
