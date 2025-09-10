@@ -32,6 +32,8 @@ from logging.handlers import RotatingFileHandler
 
 from flask import Flask, render_template, send_from_directory, jsonify, Response
 from dotenv import load_dotenv
+from database import AnalysisDatabase
+from memory_manager import MemoryManager, get_memory_manager, log_memory, force_gc, monitor_threshold
 
 # --- Configuration ---
 load_dotenv() # Load environment variables from .env file (for local development)
@@ -120,41 +122,42 @@ def get_memory_usage():
         return {'rss_mb': 0, 'vms_mb': 0}
 
 def log_memory_usage(context="", force_gc=False):
-    """Log current memory usage with optional garbage collection."""
+    """Enhanced memory usage logging with advanced memory management."""
     try:
-        memory = get_memory_usage()
-        msg = f"Memory usage {context}: RSS={memory['rss_mb']}MB, VMS={memory['vms_mb']}MB"
+        # Use our new memory manager
+        memory_manager = get_memory_manager(logging.getLogger(__name__))
         
-        # Check for high memory usage
-        if memory['rss_mb'] > 400 or force_gc:  # Alert at 400MB RSS
-            logging.warning(f"High memory usage detected: {msg}")
-            if memory['rss_mb'] > 600:  # Emergency cleanup at 600MB
-                logging.error(f"Critical memory usage: {msg} - forcing garbage collection")
-                gc.collect()
-                gc.collect()  # Double GC like viberater
-                after_gc = get_memory_usage()
-                logging.info(f"After GC: RSS={after_gc['rss_mb']}MB, VMS={after_gc['vms_mb']}MB")
+        if force_gc:
+            force_gc(context, logging.getLogger(__name__))
         else:
-            logging.info(msg)
+            log_memory(context, logging.getLogger(__name__))
+        
+        # Monitor memory threshold (600MB for emergency, 400MB for warning)
+        stats = memory_manager.get_memory_stats()
+        if stats['rss'] > 600:
+            logging.error(f"Critical memory usage: {stats['rss']}MB RSS - forcing cleanup")
+            memory_manager.cleanup_resources('emergency')
+        elif stats['rss'] > 400:
+            logging.warning(f"High memory usage detected: {stats['rss']}MB RSS")
+            monitor_threshold(400, context, logging.getLogger(__name__))
             
-        return memory
+        return {'rss_mb': stats['rss'], 'vms_mb': stats.get('vms', 0)}
     except Exception as e:
         logging.error(f"Error monitoring memory: {e}")
         return {'rss_mb': 0, 'vms_mb': 0}
 
 def cleanup_memory():
-    """Force garbage collection and memory cleanup."""
+    """Enhanced memory cleanup using advanced memory management."""
     try:
-        before = get_memory_usage()
-        gc.collect()
-        gc.collect()  # Double collection like viberater
-        after = get_memory_usage()
+        memory_manager = get_memory_manager(logging.getLogger(__name__))
         
-        freed_mb = before['rss_mb'] - after['rss_mb']
-        if freed_mb > 0:
-            logging.info(f"Memory cleanup freed {freed_mb:.1f}MB (RSS: {before['rss_mb']}MB -> {after['rss_mb']}MB)")
+        # Perform comprehensive cleanup
+        memory_manager.cleanup_resources('manual-cleanup')
         
-        return after
+        # Get final stats
+        stats = memory_manager.get_memory_stats()
+        return {'rss_mb': stats['rss'], 'vms_mb': stats.get('vms', 0)}
+        
     except Exception as e:
         logging.error(f"Error during memory cleanup: {e}")
         return get_memory_usage()
@@ -669,6 +672,16 @@ def run_analysis_now():
                     analysis_logger.info("LDA analysis completed successfully")
                     analysis_logger.info(f"Topics discovered: 5")
                     analysis_logger.info(f"Visualization generated: {VIS_HTML_PATH}")
+                    
+                    # Final memory report using enhanced memory manager
+                    try:
+                        memory_manager = get_memory_manager(analysis_logger)
+                        final_report = memory_manager.log_final_report()
+                        analysis_logger.info(f"Peak memory usage: {final_report['current']['rss']}MB RSS")
+                        analysis_logger.info(f"Total GC collections: {final_report['gc_stats']['total_collections']}")
+                    except Exception as mem_error:
+                        analysis_logger.warning(f"Could not generate final memory report: {mem_error}")
+                    
                     analysis_logger.info("=== ANALYSIS RUN COMPLETED SUCCESSFULLY ===")
                 
                 # Get log content for storage
@@ -682,6 +695,14 @@ def run_analysis_now():
                 
                 save_analysis_cache(True, success_msg, files_collected=num_files, topics_discovered=5, topics_data=topics_data, log_content=log_content)
                 cleanup_on_analysis_complete()
+                
+                # Final comprehensive memory cleanup
+                try:
+                    memory_manager = get_memory_manager(logging.getLogger(__name__))
+                    memory_manager.cleanup_resources('analysis-complete')
+                except Exception as cleanup_error:
+                    logging.warning(f"Final cleanup warning: {cleanup_error}")
+                
                 print("Analysis completed successfully")
             else:
                 error_msg = "Analysis failed during LDA processing"
@@ -1616,6 +1637,10 @@ def get_database_stats():
     except Exception as e:
         logging.error(f"Error getting stats: {e}")
         return jsonify({'error': str(e)}), 500
+
+# Initialize memory management
+memory_manager = get_memory_manager(logging.getLogger(__name__))
+log_memory('startup', logging.getLogger(__name__))
 
 # Start the analysis scheduler when the app starts
 start_analysis_scheduler()
