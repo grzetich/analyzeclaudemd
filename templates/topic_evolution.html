@@ -166,7 +166,6 @@
             <p class="subtitle">Track how Claude.md topics change and evolve over time</p>
             <div>
                 <a href="/" class="nav-link">← Back to Main</a>
-                <a href="/threejs-visualization" class="nav-link">3D Visualization</a>
             </div>
         </div>
         
@@ -199,7 +198,7 @@
                 </div>
                 
                 <div class="chart-section">
-                    <div class="chart-title">Topic Stability Over Time</div>
+                    <div class="chart-title">Topic Strength Evolution Over Time</div>
                     <div class="chart-container">
                         <canvas id="stabilityChart"></canvas>
                     </div>
@@ -287,11 +286,56 @@
             const datasets = [];
             const colors = ['#667eea', '#f093fb', '#4facfe', '#43e97b', '#fa709a', '#ff6b6b', '#4ecdc4', '#45b7d1'];
             
+            // Create datasets from timeline data showing topic strength over time
+            const topicData = {};
+            
+            // Sort timeline by timestamp and extract topic strength data
+            if (data.timeline) {
+                // Sort timeline chronologically
+                const sortedTimeline = [...data.timeline].sort((a, b) => 
+                    new Date(a.timestamp) - new Date(b.timestamp));
+                
+                sortedTimeline.forEach((timePoint, runIndex) => {
+                    if (timePoint.topics) {
+                        timePoint.topics.forEach(topic => {
+                            if (!topicData[topic.label]) {
+                                topicData[topic.label] = [];
+                            }
+                            // Use top_10_strength for more consistent scaling
+                            const strength = topic.top_10_strength || topic.topic_strength || 0;
+                            topicData[topic.label].push({
+                                x: runIndex,
+                                y: strength
+                            });
+                        });
+                    }
+                });
+            }
+            
+            // Only show topics that appear in at least 2 runs for meaningful stability tracking
+            const stableTopics = {};
+            for (const [topicName, dataPoints] of Object.entries(topicData)) {
+                if (dataPoints.length >= 2) {
+                    stableTopics[topicName] = dataPoints;
+                }
+            }
+            
+            // Filter out topics with extremely high values that would skew the chart scale
+            // (These are likely from different data sources with different scaling)
+            const maxReasonableValue = 100; // Most Claude topic strengths are under 10
+            const filteredTopics = {};
+            for (const [topicName, dataPoints] of Object.entries(stableTopics)) {
+                const maxValue = Math.max(...dataPoints.map(dp => dp.y));
+                if (maxValue <= maxReasonableValue) {
+                    filteredTopics[topicName] = dataPoints;
+                }
+            }
+            
             let colorIndex = 0;
-            for (const [topic, stability] of Object.entries(data.stability_scores || {})) {
+            for (const [topicName, dataPoints] of Object.entries(filteredTopics)) {
                 datasets.push({
-                    label: topic,
-                    data: stability.map ? stability.map(s => ({ x: s.run, y: s.similarity * 100 })) : [],
+                    label: topicName,
+                    data: dataPoints,
                     borderColor: colors[colorIndex % colors.length],
                     backgroundColor: colors[colorIndex % colors.length] + '20',
                     tension: 0.4

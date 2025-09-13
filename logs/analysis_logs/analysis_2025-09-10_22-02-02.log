@@ -1,0 +1,11 @@
+2025-09-10 22:02:02,805 - INFO - === ANALYSIS RUN STARTED ===
+2025-09-10 22:02:02,805 - INFO - Analysis timestamp: 2025-09-10T22:02:02.804266
+2025-09-10 22:02:02,805 - INFO - Initial memory: RSS=177.27MB, VMS=1100.43MB
+2025-09-10 22:02:02,805 - INFO - Starting GitHub file collection (max 500 files)...
+2025-09-10 22:04:21,269 - INFO - Memory after collection: RSS=190.12MB, VMS=1112.52MB
+2025-09-10 22:04:21,269 - INFO - Successfully collected 500 claude.md files
+2025-09-10 22:04:21,269 - INFO - Starting LDA topic modeling analysis...
+2025-09-10 22:04:21,312 - INFO - Memory before LDA: RSS=190.14MB
+2025-09-10 22:04:27,383 - INFO - Memory after LDA cleanup: RSS=318.71MB
+2025-09-10 22:04:27,383 - ERROR - LDA processing failed
+2025-09-10 22:04:27,383 - INFO - === ANALYSIS RUN FAILED ===

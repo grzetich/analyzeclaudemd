@@ -1,0 +1,4 @@
+2025-09-10 21:48:17,292 - INFO - === ANALYSIS RUN STARTED ===
+2025-09-10 21:48:17,292 - INFO - Analysis timestamp: 2025-09-10T21:48:17.291915
+2025-09-10 21:48:17,293 - INFO - Initial memory: RSS=181.5MB, VMS=1099.73MB
+2025-09-10 21:48:17,293 - INFO - Starting GitHub file collection (max 500 files)...

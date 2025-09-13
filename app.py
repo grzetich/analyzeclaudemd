@@ -30,9 +30,10 @@ import logging
 from datetime import datetime, timedelta
 from logging.handlers import RotatingFileHandler
 
-from flask import Flask, render_template, send_from_directory, jsonify, Response
+from flask import Flask, render_template, send_from_directory, jsonify, Response, request
 from dotenv import load_dotenv
-from database import AnalysisDatabase
+# Database removed - using JSON file fallback only
+# from database import AnalysisDatabase
 from memory_manager import MemoryManager, get_memory_manager, log_memory, force_gc, monitor_threshold
 
 # --- Configuration ---
@@ -507,7 +508,12 @@ def should_run_analysis():
     """Check if analysis should run based on daily 3 AM GMT schedule."""
     cache = load_analysis_cache()
     if not cache:
-        return True
+        # Only run if it's currently around 3 AM GMT, not just because there's no cache
+        from datetime import timezone
+        now_gmt = datetime.now(timezone.utc)
+        current_hour = now_gmt.hour
+        # Run if it's between 3-4 AM GMT (1 hour window)
+        return current_hour == ANALYSIS_TARGET_HOUR_GMT
     
     try:
         from datetime import timezone
@@ -906,11 +912,16 @@ def perform_lda_and_visualize(documents, num_topics=5):
 
     print(f"Starting LDA training with {len(processed_docs)} documents...")
     try:
-        # Create document-term matrix
+        # Create document-term matrix with adaptive parameters
+        # Adjust min_df based on document count to avoid parameter conflicts
+        doc_count = len(processed_docs)
+        min_df = max(1, min(5, doc_count // 10))  # Adaptive min_df
+        max_df = 0.9 if doc_count < 50 else 0.5   # Higher max_df for small datasets
+        
         vectorizer = CountVectorizer(
-            max_features=1000,
-            min_df=5,
-            max_df=0.5,
+            max_features=min(1000, doc_count * 10),  # Adaptive max_features
+            min_df=min_df,
+            max_df=max_df,
             stop_words='english'
         )
         doc_term_matrix = vectorizer.fit_transform(processed_docs)
@@ -957,7 +968,12 @@ def perform_lda_and_visualize(documents, num_topics=5):
         print(f"LDA visualization saved to {VIS_HTML_PATH}")
         return True, topics_data
     except Exception as e:
+        import traceback
+        error_details = traceback.format_exc()
         print(f"Error during LDA modeling or visualization: {e}")
+        print(f"Full traceback: {error_details}")
+        logging.error(f"LDA processing failed: {e}")
+        logging.error(f"Traceback: {error_details}")
         return False, None
 
 def extract_detailed_topics_data(lda_model, feature_names, num_topics):
@@ -1015,9 +1031,9 @@ def generate_topic_label(top_words):
         return "User Interface"
     elif any(word in top_5_words for word in ['deploy', 'build', 'production']):
         return "Deployment & Build"
-    elif any(word in top_3_words for word in ['doc', 'documentation', 'readme']):
+    elif any(word in top_5_words for word in ['doc', 'documentation', 'readme']):
         return "Documentation"
-    elif any(word in top_3_words for word in ['style', 'format', 'convention']):
+    elif any(word in top_5_words for word in ['style', 'format', 'convention']):
         return "Code Style"
     else:
         # Fallback: use the top 2 words
@@ -1091,59 +1107,71 @@ def create_enhanced_visualization(lda_model, feature_names, num_topics, analysis
             .stat-label { opacity: 0.8; font-size: 0.9em; }
             .content { padding: 30px; }
             .topics-intro { 
-                margin-bottom: 30px; 
-                padding: 20px;
+                margin-bottom: 20px; 
+                padding: 15px;
                 background: #f8f9fa;
                 border-radius: 8px;
                 border-left: 4px solid #667eea;
+                text-align: center;
             }
-            .topics-grid {
-                display: grid;
-                grid-template-columns: repeat(auto-fit, minmax(450px, 1fr));
-                gap: 25px;
-                margin-top: 30px;
+            .topics-list {
+                display: flex;
+                flex-direction: column;
+                gap: 15px;
+                margin-top: 20px;
+                max-width: 900px;
+                margin-left: auto;
+                margin-right: auto;
             }
             .topic-card { 
-                padding: 25px; 
-                border-radius: 12px; 
-                background: white;
-                box-shadow: 0 4px 15px rgba(0,0,0,0.08);
-                border: 1px solid #e9ecef;
-                transition: all 0.3s ease;
-                position: relative;
-                overflow: hidden;
-            }
-            .topic-card:hover {
-                transform: translateY(-2px);
-                box-shadow: 0 8px 25px rgba(0,0,0,0.15);
-            }
-            .topic-card::before {
-                content: '';
-                position: absolute;
-                top: 0; left: 0; right: 0;
-                height: 4px;
-                background: linear-gradient(90deg, var(--topic-color), var(--topic-color-light));
-            }
-            .topic-header {
                 display: flex;
                 align-items: center;
-                justify-content: space-between;
-                margin-bottom: 20px;
+                padding: 20px; 
+                border-radius: 10px; 
+                background: white;
+                box-shadow: 0 2px 10px rgba(0,0,0,0.08);
+                border-left: 4px solid var(--topic-color);
+                transition: all 0.3s ease;
+                gap: 20px;
             }
-            .topic-label { 
-                font-size: 1.3em; 
-                font-weight: 600; 
-                color: #2c3e50;
-                margin: 0;
+            .topic-card:hover {
+                transform: translateY(-1px);
+                box-shadow: 0 4px 15px rgba(0,0,0,0.12);
             }
             .topic-number {
                 background: var(--topic-color);
                 color: white;
-                width: 32px; height: 32px;
+                width: 40px; 
+                height: 40px;
                 border-radius: 50%;
                 display: flex;
                 align-items: center;
                 justify-content: center;
+                font-weight: bold;
+                font-size: 1.1em;
+                flex-shrink: 0;
+            }
+            .topic-content {
+                flex: 1;
+                display: flex;
+                flex-direction: column;
+                gap: 10px;
+            }
+            .topic-label { 
+                font-size: 1.2em; 
+                font-weight: 600; 
+                color: #2c3e50;
+                margin: 0;
+            }
+            .words-container {
+                display: flex;
+                flex-wrap: wrap;
+                gap: 6px;
+            }
+            .topic-strength {
+                color: #666;
+                font-size: 0.85em;
+                white-space: nowrap;
                 font-weight: bold;
                 font-size: 0.9em;
             }
@@ -1215,6 +1243,42 @@ def create_enhanced_visualization(lda_model, feature_names, num_topics, analysis
             .how-it-works-link:hover {
                 background: #5a67d8;
             }
+            
+            /* Mobile responsive styles */
+            @media (max-width: 768px) {
+                .topic-card {
+                    flex-direction: column;
+                    align-items: flex-start;
+                    gap: 15px;
+                    padding: 15px;
+                }
+                .topic-number {
+                    align-self: flex-start;
+                }
+                .container {
+                    margin: 10px;
+                    border-radius: 8px;
+                }
+                .header {
+                    padding: 20px 15px;
+                }
+                .header h1 {
+                    font-size: 1.8em;
+                }
+            }
+            
+            @media (max-width: 480px) {
+                .topic-card {
+                    padding: 12px;
+                }
+                .word-tag {
+                    font-size: 0.7em !important;
+                    padding: 2px 6px !important;
+                }
+                .topics-list {
+                    gap: 10px;
+                }
+            }
         </style>
     </head>
     <body>
@@ -1256,7 +1320,7 @@ def create_enhanced_visualization(lda_model, feature_names, num_topics, analysis
                         terms for that topic, sized by their importance. Topics with stronger presence in the dataset appear more prominent.
                     </p>
                 </div>
-                <div class="topics-grid">
+                <div class="topics-list">
     """
     
     # Define color palette for topics
@@ -1287,12 +1351,11 @@ def create_enhanced_visualization(lda_model, feature_names, num_topics, analysis
         strength_percent = int(normalized_strengths[topic_idx] * 100)
         
         html_content += f"""
-                <div class="topic-card" style="--topic-color: {color_primary}; --topic-color-light: {color_secondary};">
-                    <div class="topic-header">
+                <div class="topic-card" style="--topic-color: {color_primary};">
+                    <div class="topic-number">{topic_idx + 1}</div>
+                    <div class="topic-content">
                         <h3 class="topic-label">{topic_label}</h3>
-                        <div class="topic-number">{topic_idx + 1}</div>
-                    </div>
-                    <div class="words-container">
+                        <div class="words-container">
         """
         
         # Add words with different styling based on importance
@@ -1307,13 +1370,9 @@ def create_enhanced_visualization(lda_model, feature_names, num_topics, analysis
             html_content += f'<span class="{css_class}">{word}</span>'
         
         html_content += f"""
-                    </div>
-                    <div class="topic-strength">
-                        Topic Strength: {strength_percent}%
-                        <div class="strength-bar">
-                            <div class="strength-fill" style="width: {strength_percent}%;"></div>
                         </div>
                     </div>
+                    <div class="topic-strength">{strength_percent}%</div>
                 </div>
         """
     
@@ -1374,13 +1433,31 @@ def create_simple_visualization(lda_model, feature_names, num_topics):
 @app.route('/')
 def index():
     """Renders the main page."""
-    return render_template('index.html')
+    # Pass debug mode to template for conditional features
+    debug_mode = app.debug or os.getenv('FLASK_DEBUG', '0') == '1' or os.getenv('FLASK_ENV') == 'development'
+    return render_template('index.html', debug_mode=debug_mode)
 
-@app.route('/analyze', methods=['GET'])
+@app.route('/analyze', methods=['GET', 'POST'])
 def analyze_data():
     """
     GET: Returns cached analysis status. Analysis runs automatically at 3 AM GMT daily.
+    POST: Force analysis to run now (manual trigger).
     """
+    if request.method == 'POST':
+        # Manual trigger - force analysis now
+        success = run_analysis_now()
+        if success:
+            return jsonify({
+                "status": "warning",
+                "message": "Analysis started manually. This may take several minutes..."
+            })
+        else:
+            return jsonify({
+                "status": "warning", 
+                "message": "Analysis is already running. Please wait for it to complete."
+            })
+    
+    # GET request - check status
     cache = load_analysis_cache()
     
     if cache:

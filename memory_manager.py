@@ -58,7 +58,7 @@ class MemoryManager:
         stats = self.get_memory_stats()
         runtime = round((time.time() - self.start_time), 1)
         
-        log_msg = f"📊 Memory{f' ({context})' if context else ''}: "
+        log_msg = f"Memory{f' ({context})' if context else ''}: "
         log_msg += f"RSS {stats['rss']}MB | "
         log_msg += f"VMS {stats['vms']}MB | "
         log_msg += f"{stats['percent']}% of system | "
@@ -86,7 +86,7 @@ class MemoryManager:
         after_stats = self.get_memory_stats()
         memory_freed = round(before_stats['rss'] - after_stats['rss'], 2)
         
-        log_msg = f"🗑️  GC{f' ({context})' if context else ''}: "
+        log_msg = f"GC{f' ({context})' if context else ''}: "
         log_msg += f"Collected {collected} objects"
         
         if memory_freed > 0:
@@ -176,7 +176,7 @@ class MemoryManager:
         Args:
             context: Context for logging
         """
-        self.logger.info(f"🧹 Performing resource cleanup ({context})")
+        self.logger.info(f"Performing resource cleanup ({context})")
         
         # Force garbage collection
         self.force_garbage_collection(context)
@@ -185,7 +185,7 @@ class MemoryManager:
         try:
             import matplotlib.pyplot as plt
             plt.close('all')
-            self.logger.info("🧹 Closed all matplotlib figures")
+            self.logger.info("Closed all matplotlib figures")
         except ImportError:
             pass
         
@@ -194,7 +194,7 @@ class MemoryManager:
             import nltk
             if hasattr(nltk.data, 'clear_cache'):
                 nltk.data.clear_cache()
-                self.logger.info("🧹 Cleared NLTK cache")
+                self.logger.info("Cleared NLTK cache")
         except (ImportError, AttributeError):
             pass
     

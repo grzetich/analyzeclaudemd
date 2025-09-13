@@ -1,0 +1,36 @@
+version: '3.8'
+
+services:
+  claude-analyzer:
+    build: .
+    ports:
+      - "5000:5000"
+    volumes:
+      # Mount source code for live reloading
+      - .:/app
+      # Persist cache and logs
+      - ./cache:/app/cache
+      - ./logs:/app/logs
+    environment:
+      - FLASK_ENV=development
+      - FLASK_DEBUG=1
+      - GITHUB_PAT=${GITHUB_PAT}
+    restart: unless-stopped
+    stdin_open: true
+    tty: true
+    
+  # Optional: Production-like environment
+  claude-analyzer-prod:
+    build: .
+    ports:
+      - "5001:5000"
+    volumes:
+      - ./cache:/app/cache
+      - ./logs:/app/logs
+    environment:
+      - FLASK_ENV=production
+      - FLASK_DEBUG=0
+      - GITHUB_PAT=${GITHUB_PAT}
+    command: ["gunicorn", "--bind", "0.0.0.0:5000", "--workers", "2", "--timeout", "300", "app:app"]
+    profiles:
+      - prod

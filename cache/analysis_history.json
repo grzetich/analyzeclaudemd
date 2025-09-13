@@ -264,5 +264,21 @@
         "label": "Task & Implementation"
       }
     ]
+  },
+  {
+    "timestamp": "2025-09-10T22:04:26.992505",
+    "success": false,
+    "message": "Analysis failed during LDA processing",
+    "files_collected": 500,
+    "topics_discovered": 0,
+    "topics_data": null
+  },
+  {
+    "timestamp": "2025-09-10T22:04:27.383733",
+    "success": false,
+    "message": "Analysis failed during LDA processing",
+    "files_collected": 500,
+    "topics_discovered": 0,
+    "topics_data": null
   }
 ]

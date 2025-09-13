@@ -1,0 +1,39 @@
+# Git and development files
+.git
+.gitignore
+README.md
+
+# Python cache
+__pycache__
+*.pyc
+*.pyo
+*.pyd
+.Python
+
+# Virtual environments
+venv/
+env/
+.venv/
+
+# IDE files
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# OS files
+.DS_Store
+Thumbs.db
+
+# Local development files
+.env.local
+*.log
+
+# Don't copy existing cache/logs (will be mounted as volumes)
+cache/
+logs/
+
+# Docker files (don't need in container)
+Dockerfile
+docker-compose.yml
+.dockerignore
