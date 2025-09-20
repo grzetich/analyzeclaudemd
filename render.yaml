@@ -1,0 +1,12 @@
+services:
+  - type: web
+    name: claude-topic-analyzer
+    env: python
+    buildCommand: pip install -r requirements.txt
+    startCommand: gunicorn app:app
+    envVars:
+      - key: GITHUB_PAT
+        sync: false  # Will be set manually in Render dashboard
+      - key: PYTHON_VERSION
+        value: 3.11.0
+    plan: free
