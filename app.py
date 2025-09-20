@@ -41,6 +41,16 @@ load_dotenv() # Load environment variables from .env file (for local development
 
 app = Flask(__name__)
 
+# Add cache-control headers to prevent frontend caching issues
+@app.after_request
+def after_request(response):
+    # Add cache-control headers to API and visualization routes
+    if request.path.startswith('/api/') or request.path in ['/visualization', '/analyze']:
+        response.headers['Cache-Control'] = 'no-cache, no-store, must-revalidate'
+        response.headers['Pragma'] = 'no-cache'
+        response.headers['Expires'] = '0'
+    return response
+
 # Suppress warnings
 warnings.filterwarnings("ignore", category=DeprecationWarning)
 warnings.filterwarnings("ignore", category=FutureWarning)
@@ -1504,7 +1514,13 @@ def get_visualization():
     if os.path.exists(VIS_HTML_PATH):
         try:
             with open(VIS_HTML_PATH, 'r', encoding='utf-8') as f:
-                return f.read()
+                content = f.read()
+                response = Response(content, mimetype='text/html')
+                # Add cache-control headers to prevent caching
+                response.headers['Cache-Control'] = 'no-cache, no-store, must-revalidate'
+                response.headers['Pragma'] = 'no-cache'
+                response.headers['Expires'] = '0'
+                return response
         except Exception as e:
             print(f"Error reading visualization file: {e}")
             return f"Error loading visualization: {e}", 500

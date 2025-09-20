@@ -374,14 +374,6 @@
     </div>
 
     <div class="main-content">
-        <div class="status-section">
-            <div id="status-message" class="status-message status-warning">
-                <div class="loading-spinner"></div>
-                Loading analysis results...
-            </div>
-            
-        </div>
-
         <div class="view-options">
             <a href="#what-it-means" class="view-card" onclick="showWhatItMeans(); return false;">
                 <h3>🎯 What It Means</h3>
@@ -407,7 +399,7 @@
                 <h3>Topic Visualization</h3>
             </div>
             <div class="viz-content" id="vizContent">
-                <iframe src="/visualization" style="width: 100%; height: 600px; border: none; border-radius: 8px;"></iframe>
+                <div id="embedded-visualization">Loading visualization...</div>
             </div>
         </div>
 
@@ -483,47 +475,47 @@
             vizSection.scrollIntoView({ behavior: 'smooth' });
         }
 
-        async function checkAnalysisStatus() {
-            const statusDiv = document.getElementById('status-message');
-            
+        async function loadVisualization() {
             try {
-                // First check if we have recent analysis results without triggering new analysis
-                const response = await fetch('/analyze', { method: 'GET' });
+                const timestamp = new Date().getTime();
+                const response = await fetch(`/visualization?_t=${timestamp}`);
+                const html = await response.text();
+
+                // Extract just the content inside the body tag
+                const parser = new DOMParser();
+                const doc = parser.parseFromString(html, 'text/html');
+                const content = doc.body.innerHTML;
+
+                document.getElementById('embedded-visualization').innerHTML = content;
+            } catch (error) {
+                console.error('Error loading visualization:', error);
+                document.getElementById('embedded-visualization').innerHTML =
+                    '<div style="padding: 20px; text-align: center; color: #666;">Failed to load visualization. Please refresh the page.</div>';
+            }
+        }
+
+        async function checkAnalysisStatus() {
+            try {
+                // Add cache busting to API calls
+                const timestamp = new Date().getTime();
+                const response = await fetch(`/analyze?_t=${timestamp}`, { method: 'GET' });
                 const data = await response.json();
                 analysisData = data;
-                
-                // Update status message
-                statusDiv.innerHTML = data.message;
-                statusDiv.className = 'status-message';
-                
+
+                // Load statistics if available (no need to show status messages)
                 if (data.status === 'success') {
-                    statusDiv.classList.add('status-success');
-                    
-                    // Load statistics if available
                     await loadStatistics();
-                    
-                } else if (data.status === 'warning') {
-                    statusDiv.classList.add('status-warning');
-                    statusDiv.innerHTML = '<div class="loading-spinner"></div>' + data.message;
-                    
-                    // If analysis is running, poll for updates
-                    if (data.message.includes('running') || data.message.includes('started')) {
-                        setTimeout(checkAnalysisStatus, 15000); // Check again in 15 seconds
-                    }
-                    
-                } else {
-                    statusDiv.classList.add('status-error');
                 }
             } catch (error) {
                 console.error('Error during analysis:', error);
-                statusDiv.innerHTML = 'Connection error. Please refresh the page.';
-                statusDiv.className = 'status-message status-error';
+                // Silently fail - visualization still works
             }
         }
 
         async function loadStatistics() {
             try {
-                const response = await fetch('/api/topics-3d');
+                const timestamp = new Date().getTime();
+                const response = await fetch(`/api/topics-3d?_t=${timestamp}`);
                 const data = await response.json();
                 
                 if (data && data.metadata) {
@@ -548,6 +540,7 @@
 
         // Check analysis status when page loads (without triggering new analysis)
         window.addEventListener('DOMContentLoaded', function() {
+            loadVisualization(); // Load visualization content directly
             checkAnalysisStatus();
             loadStatistics();
         });
