@@ -1,0 +1,203 @@
+
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Claude.md Topic Analysis - Simple Visualization</title>
+    <meta charset="UTF-8">
+    <style>
+        * { box-sizing: border-box; }
+        body { 
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; 
+            margin: 0; padding: 20px; 
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            color: #333;
+        }
+        .container { 
+            max-width: 1200px; 
+            margin: 0 auto; 
+            background: white; 
+            border-radius: 12px; 
+            box-shadow: 0 20px 40px rgba(0,0,0,0.1);
+            overflow: hidden;
+        }
+        .header {
+            background: linear-gradient(135deg, #2c3e50, #34495e);
+            color: white;
+            padding: 30px;
+            text-align: center;
+        }
+        .header h1 { margin: 0 0 10px 0; font-size: 2.2em; font-weight: 300; }
+        .header .subtitle { opacity: 0.9; font-size: 1.1em; }
+        .stats {
+            display: flex;
+            justify-content: space-around;
+            padding: 20px;
+            background: #ecf0f1;
+            border-bottom: 1px solid #ddd;
+        }
+        .stat { text-align: center; }
+        .stat-number { 
+            display: block; 
+            font-size: 2em; 
+            font-weight: bold; 
+            color: #2c3e50; 
+            margin-bottom: 5px; 
+        }
+        .stat-label { color: #7f8c8d; font-size: 0.9em; }
+        .topics-grid { 
+            display: grid; 
+            grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); 
+            gap: 20px; 
+            padding: 30px; 
+        }
+        .topic-card {
+            border-radius: 12px;
+            box-shadow: 0 4px 15px rgba(0,0,0,0.1);
+            overflow: hidden;
+            transition: transform 0.2s ease;
+        }
+        .topic-card:hover { transform: translateY(-5px); }
+        .topic-header {
+            padding: 20px;
+            color: white;
+            font-weight: bold;
+            font-size: 1.1em;
+        }
+        .topic-body { padding: 20px; background: white; }
+        .topic-words {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 8px;
+            margin-top: 15px;
+        }
+        .word-tag {
+            background: #f8f9fa;
+            border: 1px solid #e9ecef;
+            padding: 4px 8px;
+            border-radius: 6px;
+            font-size: 0.85em;
+            color: #495057;
+        }
+        .strength-bar {
+            height: 8px;
+            background: rgba(255,255,255,0.3);
+            border-radius: 4px;
+            margin-top: 10px;
+            overflow: hidden;
+        }
+        .strength-fill {
+            height: 100%;
+            background: rgba(255,255,255,0.8);
+            border-radius: 4px;
+            transition: width 0.8s ease;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>Claude.md Topic Analysis</h1>
+            <div class="subtitle">Discovering patterns in Claude documentation across GitHub repositories</div>
+        </div>
+        
+        <div class="stats">
+            <div class="stat">
+                <span class="stat-number">500</span>
+                <div class="stat-label">Files Analyzed</div>
+            </div>
+            <div class="stat">
+                <span class="stat-number">5</span>
+                <div class="stat-label">Topics Discovered</div>
+            </div>
+            <div class="stat">
+                <span class="stat-number">77</span>
+                <div class="stat-label">Unique Words</div>
+            </div>
+            <div class="stat">
+                <span class="stat-number">500+</span>
+                <div class="stat-label">GitHub Repositories</div>
+            </div>
+        </div>
+        
+        <div class="topics-grid">
+
+            <div class="topic-card">
+                <div class="topic-header" style="background: linear-gradient(135deg, #e74c3c, #e74c3c88);">
+                    Code Guidelines
+                    <div class="strength-bar">
+                        <div class="strength-fill" style="width: 22.29060008676176%;"></div>
+                    </div>
+                </div>
+                <div class="topic-body">
+                    <strong>Top Words:</strong>
+                    <div class="topic-words">
+    <span class="word-tag">event</span><span class="word-tag">state</span><span class="word-tag">def</span><span class="word-tag">function</span><span class="word-tag">job</span><span class="word-tag">end</span><span class="word-tag">error</span><span class="word-tag">process</span><span class="word-tag">return</span><span class="word-tag">step</span>
+                    </div>
+                </div>
+            </div>
+    
+            <div class="topic-card">
+                <div class="topic-header" style="background: linear-gradient(135deg, #3498db, #3498db88);">
+                    General
+                    <div class="strength-bar">
+                        <div class="strength-fill" style="width: 50.00371875959391%;"></div>
+                    </div>
+                </div>
+                <div class="topic-body">
+                    <strong>Top Words:</strong>
+                    <div class="topic-words">
+    <span class="word-tag">return</span><span class="word-tag">error</span><span class="word-tag">python</span><span class="word-tag">validation</span><span class="word-tag">string</span><span class="word-tag">integration</span><span class="word-tag">api</span><span class="word-tag">json</span><span class="word-tag">performance</span><span class="word-tag">err</span>
+                    </div>
+                </div>
+            </div>
+    
+            <div class="topic-card">
+                <div class="topic-header" style="background: linear-gradient(135deg, #2ecc71, #2ecc7188);">
+                    Frontend Development
+                    <div class="strength-bar">
+                        <div class="strength-fill" style="width: 74.63695590527207%;"></div>
+                    </div>
+                </div>
+                <div class="topic-body">
+                    <strong>Top Words:</strong>
+                    <div class="topic-words">
+    <span class="word-tag">npm</span><span class="word-tag">typescript</span><span class="word-tag">api</span><span class="word-tag">react</span><span class="word-tag">page</span><span class="word-tag">const</span><span class="word-tag">server</span><span class="word-tag">error</span><span class="word-tag">app</span><span class="word-tag">state</span>
+                    </div>
+                </div>
+            </div>
+    
+            <div class="topic-card">
+                <div class="topic-header" style="background: linear-gradient(135deg, #f39c12, #f39c1288);">
+                    Backend Services
+                    <div class="strength-bar">
+                        <div class="strength-fill" style="width: 100.0%;"></div>
+                    </div>
+                </div>
+                <div class="topic-body">
+                    <strong>Top Words:</strong>
+                    <div class="topic-words">
+    <span class="word-tag">api</span><span class="word-tag">management</span><span class="word-tag">server</span><span class="word-tag">integration</span><span class="word-tag">environment</span><span class="word-tag">database</span><span class="word-tag">tool</span><span class="word-tag">python</span><span class="word-tag">check</span><span class="word-tag">operation</span>
+                    </div>
+                </div>
+            </div>
+    
+            <div class="topic-card">
+                <div class="topic-header" style="background: linear-gradient(135deg, #9b59b6, #9b59b688);">
+                    Task & Implementation
+                    <div class="strength-bar">
+                        <div class="strength-fill" style="width: 59.90022607812248%;"></div>
+                    </div>
+                </div>
+                <div class="topic-body">
+                    <strong>Top Words:</strong>
+                    <div class="topic-words">
+    <span class="word-tag">task</span><span class="word-tag">implementation</span><span class="word-tag">div</span><span class="word-tag">create</span><span class="word-tag">context</span><span class="word-tag">user</span><span class="word-tag">documentation</span><span class="word-tag">content</span><span class="word-tag">example</span><span class="word-tag">section</span>
+                    </div>
+                </div>
+            </div>
+    
+        </div>
+    </div>
+</body>
+</html>

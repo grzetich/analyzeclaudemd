@@ -243,22 +243,132 @@
         <div class="subtitle">
             Discovering patterns in Claude documentation across GitHub repositories using advanced topic modeling
         </div>
-        <div class="stats-overview" id="statsGrid">
-            <div class="stat-card">
-                <span class="stat-number" id="fileCount">--</span>
-                <div class="stat-label">Files Analyzed</div>
+        
+        <!-- Embedded Visualization Section -->
+        <div style="background: white; border-radius: 12px; box-shadow: 0 4px 20px rgba(0,0,0,0.1); overflow: hidden; margin: 40px 20px; max-width: 1200px; margin-left: auto; margin-right: auto;">
+            <div style="background: linear-gradient(135deg, #667eea, #764ba2); color: white; padding: 20px; text-align: center;">
+                <h3 style="margin: 0;">Topic Visualization</h3>
             </div>
-            <div class="stat-card">
-                <span class="stat-number" id="topicCount">--</span>
-                <div class="stat-label">Topics Discovered</div>
-            </div>
-            <div class="stat-card">
-                <span class="stat-number" id="vocabCount">--</span>
-                <div class="stat-label">Unique Words</div>
-            </div>
-            <div class="stat-card">
-                <span class="stat-number" id="repoCount">500+</span>
-                <div class="stat-label">GitHub Repositories</div>
+            <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 20px; padding: 30px;">
+                <div style="border-radius: 12px; box-shadow: 0 4px 15px rgba(0,0,0,0.1); overflow: hidden; transition: transform 0.2s ease;">
+                    <div style="padding: 20px; color: white; font-weight: bold; font-size: 1.1em; background: linear-gradient(135deg, #e74c3c, #e74c3c88);">
+                        Code Guidelines
+                        <div style="height: 8px; background: rgba(255,255,255,0.3); border-radius: 4px; margin-top: 10px; overflow: hidden;">
+                            <div style="height: 100%; background: rgba(255,255,255,0.8); border-radius: 4px; width: 22.3%;"></div>
+                        </div>
+                    </div>
+                    <div style="padding: 20px; background: white;">
+                        <strong>Top Words:</strong>
+                        <div style="display: flex; flex-wrap: wrap; gap: 8px; margin-top: 15px;">
+                            <span style="background: #f8f9fa; border: 1px solid #e9ecef; padding: 4px 8px; border-radius: 6px; font-size: 0.85em; color: #495057;">event</span>
+                            <span style="background: #f8f9fa; border: 1px solid #e9ecef; padding: 4px 8px; border-radius: 6px; font-size: 0.85em; color: #495057;">state</span>
+                            <span style="background: #f8f9fa; border: 1px solid #e9ecef; padding: 4px 8px; border-radius: 6px; font-size: 0.85em; color: #495057;">def</span>
+                            <span style="background: #f8f9fa; border: 1px solid #e9ecef; padding: 4px 8px; border-radius: 6px; font-size: 0.85em; color: #495057;">function</span>
+                            <span style="background: #f8f9fa; border: 1px solid #e9ecef; padding: 4px 8px; border-radius: 6px; font-size: 0.85em; color: #495057;">job</span>
+                            <span style="background: #f8f9fa; border: 1px solid #e9ecef; padding: 4px 8px; border-radius: 6px; font-size: 0.85em; color: #495057;">end</span>
+                            <span style="background: #f8f9fa; border: 1px solid #e9ecef; padding: 4px 8px; border-radius: 6px; font-size: 0.85em; color: #495057;">error</span>
+                            <span style="background: #f8f9fa; border: 1px solid #e9ecef; padding: 4px 8px; border-radius: 6px; font-size: 0.85em; color: #495057;">process</span>
+                            <span style="background: #f8f9fa; border: 1px solid #e9ecef; padding: 4px 8px; border-radius: 6px; font-size: 0.85em; color: #495057;">return</span>
+                            <span style="background: #f8f9fa; border: 1px solid #e9ecef; padding: 4px 8px; border-radius: 6px; font-size: 0.85em; color: #495057;">step</span>
+                        </div>
+                    </div>
+                </div>
+
+                <div style="border-radius: 12px; box-shadow: 0 4px 15px rgba(0,0,0,0.1); overflow: hidden; transition: transform 0.2s ease;">
+                    <div style="padding: 20px; color: white; font-weight: bold; font-size: 1.1em; background: linear-gradient(135deg, #3498db, #3498db88);">
+                        General
+                        <div style="height: 8px; background: rgba(255,255,255,0.3); border-radius: 4px; margin-top: 10px; overflow: hidden;">
+                            <div style="height: 100%; background: rgba(255,255,255,0.8); border-radius: 4px; width: 50%;"></div>
+                        </div>
+                    </div>
+                    <div style="padding: 20px; background: white;">
+                        <strong>Top Words:</strong>
+                        <div style="display: flex; flex-wrap: wrap; gap: 8px; margin-top: 15px;">
+                            <span style="background: #f8f9fa; border: 1px solid #e9ecef; padding: 4px 8px; border-radius: 6px; font-size: 0.85em; color: #495057;">return</span>
+                            <span style="background: #f8f9fa; border: 1px solid #e9ecef; padding: 4px 8px; border-radius: 6px; font-size: 0.85em; color: #495057;">error</span>
+                            <span style="background: #f8f9fa; border: 1px solid #e9ecef; padding: 4px 8px; border-radius: 6px; font-size: 0.85em; color: #495057;">python</span>
+                            <span style="background: #f8f9fa; border: 1px solid #e9ecef; padding: 4px 8px; border-radius: 6px; font-size: 0.85em; color: #495057;">validation</span>
+                            <span style="background: #f8f9fa; border: 1px solid #e9ecef; padding: 4px 8px; border-radius: 6px; font-size: 0.85em; color: #495057;">string</span>
+                            <span style="background: #f8f9fa; border: 1px solid #e9ecef; padding: 4px 8px; border-radius: 6px; font-size: 0.85em; color: #495057;">integration</span>
+                            <span style="background: #f8f9fa; border: 1px solid #e9ecef; padding: 4px 8px; border-radius: 6px; font-size: 0.85em; color: #495057;">api</span>
+                            <span style="background: #f8f9fa; border: 1px solid #e9ecef; padding: 4px 8px; border-radius: 6px; font-size: 0.85em; color: #495057;">json</span>
+                            <span style="background: #f8f9fa; border: 1px solid #e9ecef; padding: 4px 8px; border-radius: 6px; font-size: 0.85em; color: #495057;">performance</span>
+                            <span style="background: #f8f9fa; border: 1px solid #e9ecef; padding: 4px 8px; border-radius: 6px; font-size: 0.85em; color: #495057;">err</span>
+                        </div>
+                    </div>
+                </div>
+
+                <div style="border-radius: 12px; box-shadow: 0 4px 15px rgba(0,0,0,0.1); overflow: hidden; transition: transform 0.2s ease;">
+                    <div style="padding: 20px; color: white; font-weight: bold; font-size: 1.1em; background: linear-gradient(135deg, #2ecc71, #2ecc7188);">
+                        Frontend Development
+                        <div style="height: 8px; background: rgba(255,255,255,0.3); border-radius: 4px; margin-top: 10px; overflow: hidden;">
+                            <div style="height: 100%; background: rgba(255,255,255,0.8); border-radius: 4px; width: 74.6%;"></div>
+                        </div>
+                    </div>
+                    <div style="padding: 20px; background: white;">
+                        <strong>Top Words:</strong>
+                        <div style="display: flex; flex-wrap: wrap; gap: 8px; margin-top: 15px;">
+                            <span style="background: #f8f9fa; border: 1px solid #e9ecef; padding: 4px 8px; border-radius: 6px; font-size: 0.85em; color: #495057;">npm</span>
+                            <span style="background: #f8f9fa; border: 1px solid #e9ecef; padding: 4px 8px; border-radius: 6px; font-size: 0.85em; color: #495057;">typescript</span>
+                            <span style="background: #f8f9fa; border: 1px solid #e9ecef; padding: 4px 8px; border-radius: 6px; font-size: 0.85em; color: #495057;">api</span>
+                            <span style="background: #f8f9fa; border: 1px solid #e9ecef; padding: 4px 8px; border-radius: 6px; font-size: 0.85em; color: #495057;">react</span>
+                            <span style="background: #f8f9fa; border: 1px solid #e9ecef; padding: 4px 8px; border-radius: 6px; font-size: 0.85em; color: #495057;">page</span>
+                            <span style="background: #f8f9fa; border: 1px solid #e9ecef; padding: 4px 8px; border-radius: 6px; font-size: 0.85em; color: #495057;">const</span>
+                            <span style="background: #f8f9fa; border: 1px solid #e9ecef; padding: 4px 8px; border-radius: 6px; font-size: 0.85em; color: #495057;">server</span>
+                            <span style="background: #f8f9fa; border: 1px solid #e9ecef; padding: 4px 8px; border-radius: 6px; font-size: 0.85em; color: #495057;">error</span>
+                            <span style="background: #f8f9fa; border: 1px solid #e9ecef; padding: 4px 8px; border-radius: 6px; font-size: 0.85em; color: #495057;">app</span>
+                            <span style="background: #f8f9fa; border: 1px solid #e9ecef; padding: 4px 8px; border-radius: 6px; font-size: 0.85em; color: #495057;">state</span>
+                        </div>
+                    </div>
+                </div>
+
+                <div style="border-radius: 12px; box-shadow: 0 4px 15px rgba(0,0,0,0.1); overflow: hidden; transition: transform 0.2s ease;">
+                    <div style="padding: 20px; color: white; font-weight: bold; font-size: 1.1em; background: linear-gradient(135deg, #f39c12, #f39c1288);">
+                        Backend Services
+                        <div style="height: 8px; background: rgba(255,255,255,0.3); border-radius: 4px; margin-top: 10px; overflow: hidden;">
+                            <div style="height: 100%; background: rgba(255,255,255,0.8); border-radius: 4px; width: 100%;"></div>
+                        </div>
+                    </div>
+                    <div style="padding: 20px; background: white;">
+                        <strong>Top Words:</strong>
+                        <div style="display: flex; flex-wrap: wrap; gap: 8px; margin-top: 15px;">
+                            <span style="background: #f8f9fa; border: 1px solid #e9ecef; padding: 4px 8px; border-radius: 6px; font-size: 0.85em; color: #495057;">api</span>
+                            <span style="background: #f8f9fa; border: 1px solid #e9ecef; padding: 4px 8px; border-radius: 6px; font-size: 0.85em; color: #495057;">management</span>
+                            <span style="background: #f8f9fa; border: 1px solid #e9ecef; padding: 4px 8px; border-radius: 6px; font-size: 0.85em; color: #495057;">server</span>
+                            <span style="background: #f8f9fa; border: 1px solid #e9ecef; padding: 4px 8px; border-radius: 6px; font-size: 0.85em; color: #495057;">integration</span>
+                            <span style="background: #f8f9fa; border: 1px solid #e9ecef; padding: 4px 8px; border-radius: 6px; font-size: 0.85em; color: #495057;">environment</span>
+                            <span style="background: #f8f9fa; border: 1px solid #e9ecef; padding: 4px 8px; border-radius: 6px; font-size: 0.85em; color: #495057;">database</span>
+                            <span style="background: #f8f9fa; border: 1px solid #e9ecef; padding: 4px 8px; border-radius: 6px; font-size: 0.85em; color: #495057;">tool</span>
+                            <span style="background: #f8f9fa; border: 1px solid #e9ecef; padding: 4px 8px; border-radius: 6px; font-size: 0.85em; color: #495057;">python</span>
+                            <span style="background: #f8f9fa; border: 1px solid #e9ecef; padding: 4px 8px; border-radius: 6px; font-size: 0.85em; color: #495057;">check</span>
+                            <span style="background: #f8f9fa; border: 1px solid #e9ecef; padding: 4px 8px; border-radius: 6px; font-size: 0.85em; color: #495057;">operation</span>
+                        </div>
+                    </div>
+                </div>
+
+                <div style="border-radius: 12px; box-shadow: 0 4px 15px rgba(0,0,0,0.1); overflow: hidden; transition: transform 0.2s ease;">
+                    <div style="padding: 20px; color: white; font-weight: bold; font-size: 1.1em; background: linear-gradient(135deg, #9b59b6, #9b59b688);">
+                        Task & Implementation
+                        <div style="height: 8px; background: rgba(255,255,255,0.3); border-radius: 4px; margin-top: 10px; overflow: hidden;">
+                            <div style="height: 100%; background: rgba(255,255,255,0.8); border-radius: 4px; width: 59.9%;"></div>
+                        </div>
+                    </div>
+                    <div style="padding: 20px; background: white;">
+                        <strong>Top Words:</strong>
+                        <div style="display: flex; flex-wrap: wrap; gap: 8px; margin-top: 15px;">
+                            <span style="background: #f8f9fa; border: 1px solid #e9ecef; padding: 4px 8px; border-radius: 6px; font-size: 0.85em; color: #495057;">task</span>
+                            <span style="background: #f8f9fa; border: 1px solid #e9ecef; padding: 4px 8px; border-radius: 6px; font-size: 0.85em; color: #495057;">implementation</span>
+                            <span style="background: #f8f9fa; border: 1px solid #e9ecef; padding: 4px 8px; border-radius: 6px; font-size: 0.85em; color: #495057;">div</span>
+                            <span style="background: #f8f9fa; border: 1px solid #e9ecef; padding: 4px 8px; border-radius: 6px; font-size: 0.85em; color: #495057;">create</span>
+                            <span style="background: #f8f9fa; border: 1px solid #e9ecef; padding: 4px 8px; border-radius: 6px; font-size: 0.85em; color: #495057;">context</span>
+                            <span style="background: #f8f9fa; border: 1px solid #e9ecef; padding: 4px 8px; border-radius: 6px; font-size: 0.85em; color: #495057;">user</span>
+                            <span style="background: #f8f9fa; border: 1px solid #e9ecef; padding: 4px 8px; border-radius: 6px; font-size: 0.85em; color: #495057;">documentation</span>
+                            <span style="background: #f8f9fa; border: 1px solid #e9ecef; padding: 4px 8px; border-radius: 6px; font-size: 0.85em; color: #495057;">content</span>
+                            <span style="background: #f8f9fa; border: 1px solid #e9ecef; padding: 4px 8px; border-radius: 6px; font-size: 0.85em; color: #495057;">example</span>
+                            <span style="background: #f8f9fa; border: 1px solid #e9ecef; padding: 4px 8px; border-radius: 6px; font-size: 0.85em; color: #495057;">section</span>
+                        </div>
+                    </div>
+                </div>
             </div>
         </div>
     </div>
@@ -420,9 +530,18 @@
                     document.getElementById('fileCount').textContent = data.metadata.total_documents.toLocaleString();
                     document.getElementById('topicCount').textContent = data.metadata.topics_discovered;
                     document.getElementById('vocabCount').textContent = data.metadata.vocabulary_size.toLocaleString();
+                } else {
+                    // Fallback to hardcoded values from the embedded visualization
+                    document.getElementById('fileCount').textContent = '500';
+                    document.getElementById('topicCount').textContent = '5';
+                    document.getElementById('vocabCount').textContent = '77';
                 }
             } catch (error) {
                 console.error('Error loading statistics:', error);
+                // Fallback to hardcoded values from the embedded visualization
+                document.getElementById('fileCount').textContent = '500';
+                document.getElementById('topicCount').textContent = '5';
+                document.getElementById('vocabCount').textContent = '77';
             }
         }
 

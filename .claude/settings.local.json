@@ -25,7 +25,9 @@
       "Bash(git push:*)",
       "WebSearch",
       "Bash(pip install:*)",
-      "Bash(timeout:*)"
+      "Bash(timeout:*)",
+      "Bash(grep:*)",
+      "Read(//d/**)"
     ],
     "deny": [],
     "ask": []
