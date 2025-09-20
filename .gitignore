@@ -46,3 +46,6 @@ collected_data.json
 
 # Documentation
 docs/
+
+# Claude Code settings
+.claude/settings.local.json
