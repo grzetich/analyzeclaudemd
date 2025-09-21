@@ -45,7 +45,7 @@ claude_md_files/
 collected_data.json
 
 # Documentation
-docs/
+# docs/ - now including documentation
 
 # Claude Code settings
 .claude/settings.local.json
