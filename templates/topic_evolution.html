@@ -320,16 +320,8 @@
                 }
             }
             
-            // Filter out topics with extremely high values that would skew the chart scale
-            // (These are likely from different data sources with different scaling)
-            const maxReasonableValue = 100; // Most Claude topic strengths are under 10
-            const filteredTopics = {};
-            for (const [topicName, dataPoints] of Object.entries(stableTopics)) {
-                const maxValue = Math.max(...dataPoints.map(dp => dp.y));
-                if (maxValue <= maxReasonableValue) {
-                    filteredTopics[topicName] = dataPoints;
-                }
-            }
+            // Use all stable topics (no filtering by value range)
+            const filteredTopics = stableTopics;
             
             let colorIndex = 0;
             for (const [topicName, dataPoints] of Object.entries(filteredTopics)) {
@@ -358,9 +350,8 @@
                             title: { display: true, text: 'Analysis Run' }
                         },
                         y: {
-                            title: { display: true, text: 'Similarity Score (%)' },
-                            min: 0,
-                            max: 100
+                            title: { display: true, text: 'Topic Strength (Top 10 Words)' },
+                            min: 0
                         }
                     }
                 }
@@ -403,8 +394,13 @@
 
         function createTimeline(data) {
             const container = document.getElementById('timeline-content');
-            
-            data.timeline.forEach((run, index) => {
+
+            // Reverse timeline to show most recent first
+            const reversedTimeline = [...data.timeline].reverse();
+
+            reversedTimeline.forEach((run, index) => {
+                // Calculate original index for run number
+                const originalIndex = data.timeline.length - 1 - index;
                 const runDiv = document.createElement('div');
                 runDiv.className = 'timeline-run';
                 
@@ -412,7 +408,7 @@
                 
                 let timelineHTML = `
                     <div class="timeline-header">
-                        <div class="run-date">Analysis Run ${index + 1} - ${date}</div>
+                        <div class="run-date">Analysis Run ${originalIndex + 1} - ${date}</div>
                         <div class="run-stats">${run.topics_count} topics total</div>
                     </div>
                 `;
