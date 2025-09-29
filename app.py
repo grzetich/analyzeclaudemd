@@ -106,12 +106,14 @@ lemmatizer = WordNetLemmatizer()
 
 # Global variable to store visualization HTML (cache it after first run)
 # Paths for cached files and logs
-VIS_HTML_PATH = "/tmp/lda_visualization.html" if os.name != 'nt' else "templates/lda_visualization.html"
-ANALYSIS_CACHE_PATH = "/tmp/last_analysis.json" if os.name != 'nt' else "cache/last_analysis.json"
-ANALYSIS_HISTORY_PATH = "/tmp/analysis_history.json" if os.name != 'nt' else "cache/analysis_history.json"
+# Use persistent storage directory for production, local cache for development
+PERSISTENT_DATA_DIR = "/opt/render/project/src/data" if os.name != 'nt' else "cache"
+VIS_HTML_PATH = os.path.join(PERSISTENT_DATA_DIR, "lda_visualization.html") if os.name != 'nt' else "templates/lda_visualization.html"
+ANALYSIS_CACHE_PATH = os.path.join(PERSISTENT_DATA_DIR, "last_analysis.json")
+ANALYSIS_HISTORY_PATH = os.path.join(PERSISTENT_DATA_DIR, "analysis_history.json")
 LOG_PATH = "/tmp/claude_analyzer.log" if os.name != 'nt' else "logs/claude_analyzer.log"
 ANALYSIS_LOGS_DIR = "/tmp/analysis_logs/" if os.name != 'nt' else "logs/analysis_logs/"
-TEMP_DIRS = ["/tmp", "/tmp/analysis_logs"] if os.name != 'nt' else ["temp", "cache", "logs", "logs/analysis_logs"]
+TEMP_DIRS = ["/tmp", "/tmp/analysis_logs", PERSISTENT_DATA_DIR] if os.name != 'nt' else ["temp", "cache", "logs", "logs/analysis_logs"]
 
 # Analysis scheduling - runs daily at 3 AM GMT
 ANALYSIS_TARGET_HOUR_GMT = 3  # 3 AM GMT

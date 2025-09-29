@@ -10,3 +10,7 @@ services:
       - key: PYTHON_VERSION
         value: 3.11.0
     plan: free
+    disk:
+      name: claude-analyzer-data
+      mountPath: /opt/render/project/src/data
+      sizeGB: 1
