@@ -347,7 +347,10 @@
                     scales: {
                         x: {
                             type: 'linear',
-                            title: { display: true, text: 'Analysis Run' }
+                            title: { display: true, text: 'Analysis Run' },
+                            ticks: {
+                                stepSize: 1
+                            }
                         },
                         y: {
                             title: { display: true, text: 'Topic Strength (Top 10 Words)' },
