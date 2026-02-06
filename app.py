@@ -17,8 +17,8 @@ from nltk.corpus import stopwords
 from nltk.stem import WordNetLemmatizer
 from nltk.tokenize import word_tokenize
 
-from sklearn.feature_extraction.text import CountVectorizer
-from sklearn.decomposition import LatentDirichletAllocation
+from sklearn.feature_extraction.text import TfidfVectorizer
+from sklearn.decomposition import NMF
 import numpy as np
 from scipy.spatial.distance import cosine
 import json
@@ -30,7 +30,7 @@ import logging
 from datetime import datetime, timedelta
 from logging.handlers import RotatingFileHandler
 
-from flask import Flask, render_template, send_from_directory, jsonify, Response, request
+from flask import Flask, render_template, send_from_directory, jsonify, Response, request, redirect
 from dotenv import load_dotenv
 # Database removed - using JSON file fallback only
 # from database import AnalysisDatabase
@@ -106,14 +106,15 @@ lemmatizer = WordNetLemmatizer()
 
 # Global variable to store visualization HTML (cache it after first run)
 # Paths for cached files and logs
-# Use persistent storage directory for production, local cache for development
-PERSISTENT_DATA_DIR = "/opt/render/project/src/data" if os.name != 'nt' else "cache"
+# Use data/ directory (committed to repo) so historical data survives redeploys.
+# On Render the repo is at /opt/render/project/src, so data/ lives there.
+PERSISTENT_DATA_DIR = "/opt/render/project/src/data" if os.name != 'nt' else "data"
 VIS_HTML_PATH = os.path.join(PERSISTENT_DATA_DIR, "lda_visualization.html") if os.name != 'nt' else "templates/lda_visualization.html"
 ANALYSIS_CACHE_PATH = os.path.join(PERSISTENT_DATA_DIR, "last_analysis.json")
 ANALYSIS_HISTORY_PATH = os.path.join(PERSISTENT_DATA_DIR, "analysis_history.json")
 LOG_PATH = "/tmp/claude_analyzer.log" if os.name != 'nt' else "logs/claude_analyzer.log"
 ANALYSIS_LOGS_DIR = "/tmp/analysis_logs/" if os.name != 'nt' else "logs/analysis_logs/"
-TEMP_DIRS = ["/tmp", "/tmp/analysis_logs", PERSISTENT_DATA_DIR] if os.name != 'nt' else ["temp", "cache", "logs", "logs/analysis_logs"]
+TEMP_DIRS = ["/tmp", "/tmp/analysis_logs", PERSISTENT_DATA_DIR] if os.name != 'nt' else ["temp", "data", "logs", "logs/analysis_logs"]
 
 # Analysis scheduling - runs daily at 3 AM GMT
 ANALYSIS_TARGET_HOUR_GMT = 3  # 3 AM GMT
@@ -891,100 +892,88 @@ def preprocess_text(text):
 
 def perform_lda_and_visualize(documents, num_topics=5):
     """
-    Performs LDA on the given documents and creates a simple HTML visualization with memory monitoring.
+    Performs NMF topic modeling on the given documents and creates an HTML visualization.
     """
     if not documents:
-        print("No documents provided for LDA analysis.")
+        print("No documents provided for NMF analysis.")
         return False
 
-    # Memory check at start of LDA
-    lda_start_memory = log_memory_usage("at LDA start")
+    # Memory check at start
+    start_memory = log_memory_usage("at NMF start")
 
-    # Preprocess documents into strings for CountVectorizer with memory monitoring
+    # Preprocess documents into strings for TfidfVectorizer
     processed_docs = []
     for i, doc in enumerate(documents):
         tokens = preprocess_text(doc)
         if tokens:
             processed_docs.append(' '.join(tokens))
-        
-        # Memory check every 100 documents during preprocessing
+
         if i % 100 == 0 and i > 0:
             current_memory = log_memory_usage(f"after preprocessing {i} documents")
-            if current_memory['rss_mb'] > 800:  # High threshold for preprocessing
+            if current_memory['rss_mb'] > 800:
                 logging.warning(f"High memory during preprocessing: {current_memory['rss_mb']}MB")
                 gc.collect()
-    
+
     if not processed_docs:
-        print("No valid documents after preprocessing for LDA analysis.")
+        print("No valid documents after preprocessing.")
         return False
 
-    # Memory check after preprocessing
     preprocess_memory = log_memory_usage("after preprocessing complete")
     logging.info(f"Preprocessing complete - memory: RSS={preprocess_memory['rss_mb']}MB")
 
-    print(f"Starting LDA training with {len(processed_docs)} documents...")
+    print(f"Starting NMF training with {len(processed_docs)} documents...")
     try:
-        # Create document-term matrix with adaptive parameters
-        # Adjust min_df based on document count to avoid parameter conflicts
         doc_count = len(processed_docs)
-        min_df = max(1, min(5, doc_count // 10))  # Adaptive min_df
-        max_df = 0.9 if doc_count < 50 else 0.5   # Higher max_df for small datasets
-        
-        vectorizer = CountVectorizer(
-            max_features=min(1000, doc_count * 10),  # Adaptive max_features
+        min_df = max(1, min(5, doc_count // 10))
+        max_df = 0.9 if doc_count < 50 else 0.5
+
+        vectorizer = TfidfVectorizer(
+            max_features=min(1000, doc_count * 10),
             min_df=min_df,
             max_df=max_df,
             stop_words='english'
         )
         doc_term_matrix = vectorizer.fit_transform(processed_docs)
-        
-        # Memory check after vectorization
+
         vectorize_memory = log_memory_usage("after vectorization")
         logging.info(f"Vectorization complete - memory: RSS={vectorize_memory['rss_mb']}MB")
-        
-        # Perform LDA
-        lda_model = LatentDirichletAllocation(
+
+        # Perform NMF (produces more coherent, stable topics than LDA)
+        nmf_model = NMF(
             n_components=num_topics,
             random_state=100,
-            max_iter=10,
-            learning_method='online'
+            max_iter=200,
+            init='nndsvda',
         )
-        lda_model.fit(doc_term_matrix)
-        
-        # Memory check after LDA training
-        lda_train_memory = log_memory_usage("after LDA training")
-        logging.info(f"LDA training complete - memory: RSS={lda_train_memory['rss_mb']}MB")
-        
-        # Get feature names
+        nmf_model.fit(doc_term_matrix)
+
+        train_memory = log_memory_usage("after NMF training")
+        logging.info(f"NMF training complete - memory: RSS={train_memory['rss_mb']}MB")
+
         feature_names = vectorizer.get_feature_names_out()
-        
-        # Calculate analysis stats for visualization
+
         analysis_stats = {
             'total_documents': len(documents),
             'processed_documents': len(processed_docs),
             'vocabulary_size': len(feature_names),
             'topics_discovered': num_topics
         }
-        
-        # Extract detailed topic data for historical tracking
-        topics_data = extract_detailed_topics_data(lda_model, feature_names, num_topics)
-        
-        # Create enhanced HTML visualization
-        create_enhanced_visualization(lda_model, feature_names, num_topics, analysis_stats)
-        
-        # Final memory cleanup in LDA
-        del processed_docs, doc_term_matrix, lda_model, vectorizer
-        final_lda_memory = cleanup_memory()
-        logging.info(f"LDA complete with cleanup - final memory: RSS={final_lda_memory['rss_mb']}MB")
-        
-        print(f"LDA visualization saved to {VIS_HTML_PATH}")
+
+        topics_data = extract_detailed_topics_data(nmf_model, feature_names, num_topics)
+        create_enhanced_visualization(nmf_model, feature_names, num_topics, analysis_stats)
+
+        del processed_docs, doc_term_matrix, nmf_model, vectorizer
+        final_memory = cleanup_memory()
+        logging.info(f"NMF complete with cleanup - final memory: RSS={final_memory['rss_mb']}MB")
+
+        print(f"Visualization saved to {VIS_HTML_PATH}")
         return True, topics_data
     except Exception as e:
         import traceback
         error_details = traceback.format_exc()
-        print(f"Error during LDA modeling or visualization: {e}")
+        print(f"Error during NMF modeling or visualization: {e}")
         print(f"Full traceback: {error_details}")
-        logging.error(f"LDA processing failed: {e}")
+        logging.error(f"NMF processing failed: {e}")
         logging.error(f"Traceback: {error_details}")
         return False, None
 
@@ -1444,10 +1433,95 @@ def create_simple_visualization(lda_model, feature_names, num_topics):
 
 @app.route('/')
 def index():
-    """Renders the main page."""
-    # Pass debug mode to template for conditional features
+    """Renders the main page with analysis data."""
     debug_mode = app.debug or os.getenv('FLASK_DEBUG', '0') == '1' or os.getenv('FLASK_ENV') == 'development'
-    return render_template('index.html', debug_mode=debug_mode)
+
+    # Load analysis data for the homepage
+    cache = load_analysis_cache()
+    history = load_analysis_history()
+
+    # Build metrics
+    metrics = {
+        'total_repos': 0,
+        'files_processed': 0,
+        'last_analysis': None,
+        'topics_discovered': 0,
+    }
+
+    # Build topics for display
+    topics_display = []
+    key_findings = []
+
+    if cache and cache.get('success'):
+        metrics['files_processed'] = cache.get('files_collected', 0)
+        metrics['total_repos'] = cache.get('files_collected', 0)
+        metrics['topics_discovered'] = cache.get('topics_discovered', 0)
+        try:
+            metrics['last_analysis'] = datetime.fromisoformat(cache['timestamp']).strftime('%B %d, %Y')
+        except Exception:
+            metrics['last_analysis'] = None
+
+        # Build topic display data from cached topics
+        topics_data = cache.get('topics_data', [])
+        topic_meta = [
+            {'icon': '\U0001f4dd', 'color': '#4A90D9', 'desc': 'Code style rules, event handling, and error patterns'},
+            {'icon': '\U0001f4ca', 'color': '#6B7B8D', 'desc': 'Cross-cutting concerns: validation, APIs, and error handling'},
+            {'icon': '\u269b\ufe0f', 'color': '#7C3AED', 'desc': 'React, TypeScript, npm tooling, and client-side patterns'},
+            {'icon': '\U0001f527', 'color': '#059669', 'desc': 'API design, databases, server config, and integrations'},
+            {'icon': '\u2705', 'color': '#D97706', 'desc': 'Documentation structure, user context, and task workflows'},
+        ]
+
+        for i, topic in enumerate(topics_data):
+            meta = topic_meta[i] if i < len(topic_meta) else {'icon': '\U0001f4c4', 'color': '#667eea', 'desc': ''}
+            words = topic.get('top_words', [])[:10]
+            weights = topic.get('weights', [])[:10]
+            max_weight = max(weights) if weights else 1
+            word_bars = []
+            for w, wt in zip(words, weights):
+                pct = (wt / max_weight) * 100 if max_weight > 0 else 0
+                word_bars.append({'word': w, 'weight': round(wt, 4), 'pct': round(pct, 1)})
+
+            topics_display.append({
+                'label': topic.get('label', f'Topic {i+1}'),
+                'icon': meta['icon'],
+                'color': meta['color'],
+                'desc': meta['desc'],
+                'words': word_bars,
+            })
+
+        # Generate key findings
+        if topics_data:
+            # Most prevalent topic
+            strongest = max(topics_data, key=lambda t: t.get('topic_strength', 0))
+            key_findings.append(f'"{strongest.get("label", "Unknown")}" is the most prevalent topic across analyzed repositories.')
+
+            # Cross-cutting terms
+            word_counts = {}
+            for topic in topics_data:
+                for w in topic.get('top_words', [])[:10]:
+                    word_counts[w] = word_counts.get(w, 0) + 1
+            cross_cutting = [w for w, c in word_counts.items() if c >= 3]
+            if cross_cutting:
+                key_findings.append(f'Cross-cutting terms like "{", ".join(cross_cutting[:4])}" appear across 3+ topics.')
+
+            # Total unique terms
+            all_words = set()
+            for topic in topics_data:
+                all_words.update(topic.get('top_words', []))
+            key_findings.append(f'{len(all_words)} unique terms identified across all {len(topics_data)} topics.')
+
+            # Analysis count
+            successful_runs = len([h for h in history if h.get('success')])
+            if successful_runs > 1:
+                key_findings.append(f'Analysis has been run {successful_runs} times, tracking topic evolution over time.')
+
+    return render_template('index.html',
+        debug_mode=debug_mode,
+        metrics=metrics,
+        topics=topics_display,
+        key_findings=key_findings,
+        has_data=bool(cache and cache.get('success')),
+    )
 
 @app.route('/analyze', methods=['GET', 'POST'])
 def analyze_data():
@@ -1527,7 +1601,7 @@ def get_visualization():
             print(f"Error reading visualization file: {e}")
             return f"Error loading visualization: {e}", 500
     else:
-        return "Visualization not yet generated. Please trigger analysis first.", 404
+        return redirect('/')
 
 @app.route('/how-it-works')
 def how_it_works():
@@ -1700,7 +1774,80 @@ def topic_evolution_page():
     """Page to display topic evolution visualization."""
     return render_template('topic_evolution.html')
 
+@app.route('/trends')
+def trends_page():
+    """Page to display term popularity trends over time."""
+    return render_template('trends.html')
 
+@app.route('/api/term-trends')
+def get_term_trends():
+    """API endpoint providing term popularity data over time.
+
+    For each analysis run, sums the weight of each top-10 word across all
+    topics in that run.  Returns the top N most-frequent terms as time
+    series suitable for Chart.js.
+    """
+    try:
+        history = load_analysis_history()
+        successful = [h for h in history if h.get('success') and h.get('topics_data')]
+
+        if not successful:
+            return jsonify({'error': 'No analysis data available'})
+
+        # Collect per-run term weights
+        # For each run, for each word in the top 10 of any topic, sum its
+        # weight across all topics in that run.
+        from collections import Counter, defaultdict
+
+        term_run_weights = defaultdict(list)  # term -> [(date, weight), ...]
+        term_frequency = Counter()
+        dates = []
+
+        for run in successful:
+            date_str = run['timestamp'][:10]
+            dates.append(date_str)
+
+            run_weights = defaultdict(float)
+            for topic in run.get('topics_data', []):
+                words = topic.get('top_words', [])[:10]
+                weights = topic.get('weights', [])[:10]
+                for word, weight in zip(words, weights):
+                    run_weights[word] += weight
+                    term_frequency[word] += 1
+
+            for term, weight in run_weights.items():
+                term_run_weights[term].append((date_str, weight))
+
+        # Pick the top 15 most-frequent terms
+        top_terms = [t for t, _ in term_frequency.most_common(15)]
+
+        # Build datasets: for each top term, create a value for every run
+        # (0 if the term didn't appear in that run)
+        datasets = []
+        colors = [
+            '#4A90D9', '#E5634D', '#7C3AED', '#059669', '#D97706',
+            '#DC2626', '#2563EB', '#7C3AED', '#DB2777', '#0891B2',
+            '#4F46E5', '#EA580C', '#16A34A', '#9333EA', '#CA8A04',
+        ]
+
+        for i, term in enumerate(top_terms):
+            weight_map = {d: w for d, w in term_run_weights[term]}
+            values = [round(weight_map.get(d, 0), 2) for d in dates]
+            datasets.append({
+                'term': term,
+                'values': values,
+                'color': colors[i % len(colors)],
+            })
+
+        return jsonify({
+            'dates': dates,
+            'datasets': datasets,
+            'total_runs': len(successful),
+        })
+
+    except Exception as e:
+        logging.error(f"Error in term trends endpoint: {e}")
+        return jsonify({'error': str(e)}), 500
 
 @app.route('/api/analysis-run/<int:run_id>')
 def get_analysis_run_details(run_id):

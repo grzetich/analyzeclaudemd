@@ -47,5 +47,17 @@ collected_data.json
 # Documentation
 # docs/ - now including documentation
 
+# Virtual environment
+venv/
+
+# Database
+analysis.db
+
+# Logs
+logs/
+
+# Cache
+cache/
+
 # Claude Code settings
 .claude/settings.local.json

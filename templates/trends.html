@@ -1,0 +1,473 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Term Trends Over Time - Claude.md Analyzer</title>
+    <link rel="icon" href="{{ url_for('static', filename='favicon.svg') }}" type="image/svg+xml">
+    <link rel="icon" href="{{ url_for('static', filename='favicon.ico') }}" type="image/x-icon">
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/3.9.1/chart.min.js"></script>
+    <style>
+        * { box-sizing: border-box; margin: 0; padding: 0; }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            background: #f0f2f5;
+            min-height: 100vh;
+            color: #333;
+        }
+
+        .header {
+            background: linear-gradient(135deg, #1a1a2e 0%, #16213e 50%, #0f3460 100%);
+            color: white;
+            padding: 40px 20px;
+            text-align: center;
+        }
+
+        .header h1 {
+            font-size: 2.2em;
+            font-weight: 700;
+            margin-bottom: 8px;
+        }
+
+        .header .subtitle {
+            opacity: 0.8;
+            font-size: 1.05em;
+        }
+
+        .header .nav-links {
+            margin-top: 16px;
+        }
+
+        .header .nav-links a {
+            display: inline-block;
+            color: white;
+            background: rgba(255,255,255,0.15);
+            text-decoration: none;
+            padding: 8px 16px;
+            border-radius: 6px;
+            font-size: 0.9em;
+            margin: 0 4px;
+            transition: background 0.2s;
+        }
+
+        .header .nav-links a:hover {
+            background: rgba(255,255,255,0.25);
+        }
+
+        .content {
+            max-width: 1100px;
+            margin: 0 auto;
+            padding: 32px 20px;
+        }
+
+        .chart-card {
+            background: white;
+            border-radius: 12px;
+            box-shadow: 0 2px 12px rgba(0,0,0,0.06);
+            padding: 28px;
+            margin-bottom: 28px;
+        }
+
+        .chart-card h2 {
+            font-size: 1.3em;
+            color: #1a1a2e;
+            margin-bottom: 4px;
+        }
+
+        .chart-card .chart-desc {
+            font-size: 0.9em;
+            color: #666;
+            margin-bottom: 20px;
+        }
+
+        .chart-container {
+            position: relative;
+            height: 420px;
+        }
+
+        .controls {
+            display: flex;
+            gap: 12px;
+            margin-bottom: 20px;
+            flex-wrap: wrap;
+            align-items: center;
+        }
+
+        .controls label {
+            font-size: 0.88em;
+            color: #555;
+            font-weight: 500;
+        }
+
+        .controls select {
+            padding: 6px 10px;
+            border: 1px solid #ddd;
+            border-radius: 6px;
+            font-size: 0.88em;
+            background: white;
+        }
+
+        .term-toggles {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 6px;
+            margin-bottom: 16px;
+        }
+
+        .term-toggle {
+            display: inline-flex;
+            align-items: center;
+            gap: 4px;
+            padding: 4px 10px;
+            border-radius: 16px;
+            font-size: 0.82em;
+            font-weight: 500;
+            cursor: pointer;
+            border: 2px solid var(--color);
+            color: var(--color);
+            background: white;
+            transition: all 0.15s;
+            user-select: none;
+        }
+
+        .term-toggle.active {
+            background: var(--color);
+            color: white;
+        }
+
+        .term-toggle:hover {
+            opacity: 0.85;
+        }
+
+        .loading {
+            text-align: center;
+            padding: 60px 20px;
+            color: #888;
+            font-size: 1.1em;
+        }
+
+        .error-msg {
+            background: #fef2f2;
+            border: 1px solid #fecaca;
+            color: #991b1b;
+            padding: 16px 20px;
+            border-radius: 8px;
+            text-align: center;
+        }
+
+        .summary-bar {
+            display: flex;
+            gap: 32px;
+            justify-content: center;
+            flex-wrap: wrap;
+            margin-bottom: 24px;
+        }
+
+        .summary-item {
+            text-align: center;
+        }
+
+        .summary-value {
+            font-size: 1.6em;
+            font-weight: 700;
+            color: #1a1a2e;
+        }
+
+        .summary-label {
+            font-size: 0.82em;
+            color: #888;
+        }
+
+        .footer {
+            background: #1a1a2e;
+            color: rgba(255,255,255,0.6);
+            text-align: center;
+            padding: 20px;
+            font-size: 0.85em;
+            margin-top: 40px;
+        }
+
+        .footer a {
+            color: #4fc3f7;
+            text-decoration: none;
+        }
+
+        @media (max-width: 768px) {
+            .header h1 { font-size: 1.6em; }
+            .chart-container { height: 300px; }
+            .summary-bar { gap: 20px; }
+        }
+    </style>
+</head>
+<body>
+
+    <div class="header">
+        <h1>Term Trends Over Time</h1>
+        <p class="subtitle">How the most common terms in CLAUDE.md files have changed across daily analysis runs</p>
+        <div class="nav-links">
+            <a href="/">Home</a>
+            <a href="/topic-evolution">Topic Evolution</a>
+            <a href="/how-it-works">How It Works</a>
+        </div>
+    </div>
+
+    <div class="content">
+        <div id="loading" class="loading">Loading trend data...</div>
+        <div id="error" class="error-msg" style="display:none;"></div>
+
+        <div id="main-content" style="display:none;">
+
+            <div class="summary-bar" id="summaryBar"></div>
+
+            <!-- Main trends chart -->
+            <div class="chart-card">
+                <h2>Term Popularity Over Time</h2>
+                <p class="chart-desc">
+                    Each line tracks a term's total weight across all topics in each daily run.
+                    Higher weight means the term was more prominent in CLAUDE.md files that day.
+                    Click terms below to show or hide them.
+                </p>
+
+                <div class="term-toggles" id="termToggles"></div>
+
+                <div class="chart-container">
+                    <canvas id="trendsChart"></canvas>
+                </div>
+            </div>
+
+            <!-- Normalized chart -->
+            <div class="chart-card">
+                <h2>Relative Popularity (Normalized)</h2>
+                <p class="chart-desc">
+                    Same data scaled to 0-100% per term, making it easier to compare
+                    trends between terms with very different absolute weights.
+                </p>
+
+                <div class="chart-container">
+                    <canvas id="normalizedChart"></canvas>
+                </div>
+            </div>
+
+        </div>
+    </div>
+
+    <div class="footer">
+        <a href="/">Home</a> &middot;
+        <a href="/topic-evolution">Topic Evolution</a> &middot;
+        <a href="/how-it-works">How It Works</a>
+    </div>
+
+    <script>
+        let trendsData = null;
+        let trendsChart = null;
+        let normalizedChart = null;
+        let activeTerms = new Set();
+
+        async function loadTrends() {
+            try {
+                const res = await fetch('/api/term-trends');
+                const data = await res.json();
+
+                if (data.error) {
+                    showError(data.error);
+                    return;
+                }
+
+                trendsData = data;
+                document.getElementById('loading').style.display = 'none';
+                document.getElementById('main-content').style.display = 'block';
+
+                buildSummary(data);
+                buildToggles(data);
+
+                // Start with top 6 terms active
+                data.datasets.slice(0, 6).forEach(d => activeTerms.add(d.term));
+                syncToggles();
+                renderCharts();
+
+            } catch (err) {
+                showError('Failed to load trend data: ' + err.message);
+            }
+        }
+
+        function showError(msg) {
+            document.getElementById('loading').style.display = 'none';
+            const el = document.getElementById('error');
+            el.textContent = msg;
+            el.style.display = 'block';
+        }
+
+        function buildSummary(data) {
+            const bar = document.getElementById('summaryBar');
+            const totalTerms = data.datasets.length;
+            const dateRange = data.dates.length > 0
+                ? data.dates[0] + ' to ' + data.dates[data.dates.length - 1]
+                : '';
+
+            bar.innerHTML = `
+                <div class="summary-item">
+                    <div class="summary-value">${data.total_runs}</div>
+                    <div class="summary-label">Analysis Runs</div>
+                </div>
+                <div class="summary-item">
+                    <div class="summary-value">${totalTerms}</div>
+                    <div class="summary-label">Terms Tracked</div>
+                </div>
+                <div class="summary-item">
+                    <div class="summary-value" style="font-size:1em;">${dateRange}</div>
+                    <div class="summary-label">Date Range</div>
+                </div>
+            `;
+        }
+
+        function buildToggles(data) {
+            const container = document.getElementById('termToggles');
+            container.innerHTML = '';
+            data.datasets.forEach(d => {
+                const btn = document.createElement('button');
+                btn.className = 'term-toggle';
+                btn.style.setProperty('--color', d.color);
+                btn.textContent = d.term;
+                btn.dataset.term = d.term;
+                btn.addEventListener('click', () => {
+                    if (activeTerms.has(d.term)) {
+                        activeTerms.delete(d.term);
+                    } else {
+                        activeTerms.add(d.term);
+                    }
+                    syncToggles();
+                    renderCharts();
+                });
+                container.appendChild(btn);
+            });
+        }
+
+        function syncToggles() {
+            document.querySelectorAll('.term-toggle').forEach(btn => {
+                btn.classList.toggle('active', activeTerms.has(btn.dataset.term));
+            });
+        }
+
+        function renderCharts() {
+            const active = trendsData.datasets.filter(d => activeTerms.has(d.term));
+            renderTrendsChart(active);
+            renderNormalizedChart(active);
+        }
+
+        function renderTrendsChart(datasets) {
+            const ctx = document.getElementById('trendsChart').getContext('2d');
+
+            if (trendsChart) trendsChart.destroy();
+
+            trendsChart = new Chart(ctx, {
+                type: 'line',
+                data: {
+                    labels: trendsData.dates,
+                    datasets: datasets.map(d => ({
+                        label: d.term,
+                        data: d.values,
+                        borderColor: d.color,
+                        backgroundColor: d.color + '15',
+                        borderWidth: 2.5,
+                        tension: 0.3,
+                        pointRadius: 3,
+                        pointHoverRadius: 6,
+                        fill: false,
+                    }))
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    interaction: {
+                        mode: 'index',
+                        intersect: false,
+                    },
+                    plugins: {
+                        legend: { display: false },
+                        tooltip: {
+                            callbacks: {
+                                label: ctx => ctx.dataset.label + ': ' + ctx.parsed.y.toLocaleString()
+                            }
+                        }
+                    },
+                    scales: {
+                        x: {
+                            title: { display: true, text: 'Date' },
+                            ticks: { maxRotation: 45 }
+                        },
+                        y: {
+                            title: { display: true, text: 'Total Weight (sum across all topics)' },
+                            beginAtZero: true,
+                        }
+                    }
+                }
+            });
+        }
+
+        function renderNormalizedChart(datasets) {
+            const ctx = document.getElementById('normalizedChart').getContext('2d');
+
+            if (normalizedChart) normalizedChart.destroy();
+
+            // Normalize each term to 0-100 based on its own min/max
+            const normalizedDatasets = datasets.map(d => {
+                const max = Math.max(...d.values);
+                const min = Math.min(...d.values);
+                const range = max - min || 1;
+                return {
+                    ...d,
+                    values: d.values.map(v => Math.round(((v - min) / range) * 100))
+                };
+            });
+
+            normalizedChart = new Chart(ctx, {
+                type: 'line',
+                data: {
+                    labels: trendsData.dates,
+                    datasets: normalizedDatasets.map(d => ({
+                        label: d.term,
+                        data: d.values,
+                        borderColor: d.color,
+                        backgroundColor: d.color + '15',
+                        borderWidth: 2.5,
+                        tension: 0.3,
+                        pointRadius: 3,
+                        pointHoverRadius: 6,
+                        fill: false,
+                    }))
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    interaction: {
+                        mode: 'index',
+                        intersect: false,
+                    },
+                    plugins: {
+                        legend: { display: false },
+                        tooltip: {
+                            callbacks: {
+                                label: ctx => ctx.dataset.label + ': ' + ctx.parsed.y + '%'
+                            }
+                        }
+                    },
+                    scales: {
+                        x: {
+                            title: { display: true, text: 'Date' },
+                            ticks: { maxRotation: 45 }
+                        },
+                        y: {
+                            title: { display: true, text: 'Relative Strength (0-100%)' },
+                            min: 0,
+                            max: 100,
+                        }
+                    }
+                }
+            });
+        }
+
+        document.addEventListener('DOMContentLoaded', loadTrends);
+    </script>
+</body>
+</html>

@@ -15,6 +15,7 @@ This Flask web application analyzes `claude.md` files from GitHub repositories u
 ## Technical Architecture
 
 ### Backend (Flask)
+- **`app.py`** is the canonical entry point. Ignore `app_mock.py`, `app_simple.py`, `app-minimal.py` (legacy variants).
 - `/` - Main interface page
 - `/analyze` - Triggers data collection and LDA analysis
 - `/visualization` - Serves generated topic visualization
