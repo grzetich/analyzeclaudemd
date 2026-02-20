@@ -364,6 +364,78 @@ def load_analysis_history():
         print(f"Error loading analysis history: {e}")
     return []
 
+def persist_analysis_to_github():
+    """Persist analysis results back to the GitHub repo so data survives
+    container restarts on Render free tier (no persistent disk support).
+
+    Uses the GitHub Contents API to update data/analysis_history.json and
+    data/last_analysis.json in the repo.
+    """
+    if not GITHUB_TOKEN:
+        logging.warning("Cannot persist to GitHub: GITHUB_PAT not set")
+        return False
+
+    repo = os.getenv("GITHUB_REPO", "grzetich/analyzeclaudemd")
+    branch = os.getenv("GITHUB_BRANCH", "main")
+    api_base = f"https://api.github.com/repos/{repo}/contents"
+    headers = {
+        "Authorization": f"token {GITHUB_TOKEN}",
+        "Accept": "application/vnd.github.v3+json",
+    }
+
+    files_to_persist = [
+        ("data/last_analysis.json", ANALYSIS_CACHE_PATH),
+        ("data/analysis_history.json", ANALYSIS_HISTORY_PATH),
+    ]
+
+    for repo_path, local_path in files_to_persist:
+        try:
+            if not os.path.exists(local_path):
+                logging.warning(f"Local file not found for persistence: {local_path}")
+                continue
+
+            with open(local_path, 'r') as f:
+                content = f.read()
+
+            # Get current file SHA (required for updates)
+            get_resp = requests.get(
+                f"{api_base}/{repo_path}",
+                headers=headers,
+                params={"ref": branch},
+            )
+
+            sha = None
+            if get_resp.status_code == 200:
+                sha = get_resp.json().get("sha")
+            elif get_resp.status_code != 404:
+                logging.error(f"GitHub API error getting {repo_path}: {get_resp.status_code} {get_resp.text[:200]}")
+                continue
+
+            # Update/create file
+            put_data = {
+                "message": f"Auto-update {repo_path} from daily analysis",
+                "content": base64.b64encode(content.encode('utf-8')).decode('ascii'),
+                "branch": branch,
+            }
+            if sha:
+                put_data["sha"] = sha
+
+            put_resp = requests.put(
+                f"{api_base}/{repo_path}",
+                headers=headers,
+                json=put_data,
+            )
+
+            if put_resp.status_code in (200, 201):
+                logging.info(f"Persisted {repo_path} to GitHub ({len(content)} bytes)")
+            else:
+                logging.error(f"Failed to persist {repo_path}: {put_resp.status_code} {put_resp.text[:200]}")
+
+        except Exception as e:
+            logging.error(f"Error persisting {repo_path} to GitHub: {e}")
+
+    return True
+
 def get_analysis_stats():
     """Get analysis statistics from history."""
     try:
@@ -530,27 +602,26 @@ def should_run_analysis():
     
     try:
         from datetime import timezone
-        
+
         # Get the last run time
         last_run = datetime.fromisoformat(cache['timestamp'])
         if last_run.tzinfo is None:
             last_run = last_run.replace(tzinfo=timezone.utc)
-        
+
         # Get current time in GMT
         now_gmt = datetime.now(timezone.utc)
-        
+        current_hour = now_gmt.hour
+
+        # Only run during the target hour (3 AM GMT window)
+        if current_hour != ANALYSIS_TARGET_HOUR_GMT:
+            return False
+
         # Get today's 3 AM GMT
         today_3am = now_gmt.replace(hour=ANALYSIS_TARGET_HOUR_GMT, minute=0, second=0, microsecond=0)
-        
-        # If it's past 3 AM today and we haven't run since yesterday's 3 AM
-        if now_gmt >= today_3am:
-            yesterday_3am = today_3am - timedelta(days=1)
-            return last_run < yesterday_3am
-        else:
-            # If it's before 3 AM today, check if we need to run (should have run yesterday)
-            yesterday_3am = today_3am - timedelta(days=1)
-            return last_run < yesterday_3am
-            
+
+        # Run if we haven't run since before today's 3 AM window
+        return last_run < today_3am
+
     except Exception as e:
         logging.error(f"Error checking analysis schedule: {e}")
         return True
@@ -575,21 +646,50 @@ def time_until_next_analysis():
         logging.error(f"Error calculating next analysis time: {e}")
         return 3600  # Default to 1 hour if error
 
+def is_analysis_stale():
+    """Check if analysis data is stale (more than 25 hours old).
+    Used at startup to ensure freshly spun-up containers have current data,
+    independent of the 3 AM scheduling window.
+    """
+    cache = load_analysis_cache()
+    if not cache:
+        return True
+    try:
+        from datetime import timezone
+        last_run = datetime.fromisoformat(cache['timestamp'])
+        if last_run.tzinfo is None:
+            last_run = last_run.replace(tzinfo=timezone.utc)
+        now_gmt = datetime.now(timezone.utc)
+        return (now_gmt - last_run) > timedelta(hours=25)
+    except Exception:
+        return True
+
 def start_analysis_scheduler():
     """Start the background scheduler that runs analysis at 3 AM GMT daily."""
     global scheduler_thread
-    
+
     def scheduler_worker():
         """Background scheduler that waits and runs analysis at the right time."""
+        # On startup, run immediately if data is stale (>25h old).
+        # This handles Render free-tier spin-up where the container is fresh
+        # and the committed data may be days or weeks old.
+        try:
+            if is_analysis_stale():
+                logging.info("Analysis data is stale on startup - running analysis now")
+                run_analysis_now()
+                time.sleep(3600)  # Wait before entering regular schedule loop
+        except Exception as e:
+            logging.error(f"Error in startup analysis check: {e}")
+
         while True:
             try:
                 if should_run_analysis():
                     logging.info("Scheduled analysis time reached - starting analysis")
                     run_analysis_now()
-                
+
                 # Sleep until next check (every hour)
                 time.sleep(3600)  # Check every hour
-                
+
             except Exception as e:
                 logging.error(f"Error in analysis scheduler: {e}")
                 time.sleep(3600)  # Continue checking after error
@@ -714,7 +814,13 @@ def run_analysis_now():
                 
                 save_analysis_cache(True, success_msg, files_collected=num_files, topics_discovered=5, topics_data=topics_data, log_content=log_content)
                 cleanup_on_analysis_complete()
-                
+
+                # Persist results to GitHub so data survives container restarts
+                try:
+                    persist_analysis_to_github()
+                except Exception as persist_error:
+                    logging.warning(f"Could not persist to GitHub: {persist_error}")
+
                 # Final comprehensive memory cleanup
                 try:
                     memory_manager = get_memory_manager(logging.getLogger(__name__))
@@ -896,7 +1002,7 @@ def perform_lda_and_visualize(documents, num_topics=5):
     """
     if not documents:
         print("No documents provided for NMF analysis.")
-        return False
+        return False, None
 
     # Memory check at start
     start_memory = log_memory_usage("at NMF start")
@@ -916,7 +1022,7 @@ def perform_lda_and_visualize(documents, num_topics=5):
 
     if not processed_docs:
         print("No valid documents after preprocessing.")
-        return False
+        return False, None
 
     preprocess_memory = log_memory_usage("after preprocessing complete")
     logging.info(f"Preprocessing complete - memory: RSS={preprocess_memory['rss_mb']}MB")
