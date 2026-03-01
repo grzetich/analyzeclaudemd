@@ -852,7 +852,9 @@ def get_claude_md_files(query, headers, max_files=100): # Limiting for MVP and r
         params = {
             "q": query,
             "page": page,
-            "per_page": per_page
+            "per_page": per_page,
+            "sort": "indexed",
+            "order": "desc"
         }
           
         response = requests.get(BASE_URL, headers=headers, params=params)
