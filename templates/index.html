@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Claude Context Analysis | Patterns from {{ metrics.total_repos }}+ Repos</title>
+    <title>{{ display_name or 'CLAUDE.md' }} &middot; AI Agent Instruction Files</title>
     <link rel="icon" href="{{ url_for('static', filename='favicon.svg') }}" type="image/svg+xml">
     <link rel="icon" href="{{ url_for('static', filename='favicon.ico') }}" type="image/x-icon">
     <link rel="apple-touch-icon" href="{{ url_for('static', filename='favicon.svg') }}">
@@ -40,12 +40,33 @@
             line-height: 1.6;
         }
 
-        .hero .claude-definition {
+        /* === File-type Tabs === */
+        .file-type-tabs {
+            background: #0b1530;
+            border-top: 1px solid rgba(255,255,255,0.08);
+            border-bottom: 1px solid rgba(255,255,255,0.08);
+            display: flex;
+            justify-content: center;
+            padding: 0 20px;
+        }
+
+        .file-type-tab {
+            color: rgba(255,255,255,0.6);
+            text-decoration: none;
+            padding: 14px 22px;
             font-size: 0.95em;
-            opacity: 0.7;
-            max-width: 640px;
-            margin: 0 auto;
-            font-style: italic;
+            font-weight: 500;
+            border-bottom: 3px solid transparent;
+            transition: color 0.2s, border-color 0.2s;
+        }
+
+        .file-type-tab:hover {
+            color: white;
+        }
+
+        .file-type-tab.active {
+            color: #4fc3f7;
+            border-bottom-color: #4fc3f7;
         }
 
         /* === Metrics Bar === */
@@ -373,15 +394,23 @@
 
     <!-- Hero Section -->
     <div class="hero">
-        <h1>Claude Context Analysis</h1>
+        <h1>AI Agent Instruction Files</h1>
         <p class="subtitle">
-            We analyze hundreds of public CLAUDE.md files from GitHub repositories to surface the patterns,
-            common practices, and emerging conventions that shape how developers work with Claude.
-        </p>
-        <p class="claude-definition">
-            CLAUDE.md files tell Claude Code how to work with a project, covering coding standards, build commands, and architecture decisions.
+            CLAUDE.md, AGENTS.md, and SKILL.md tell coding agents how to work with a project &mdash;
+            coding standards, build commands, and architecture decisions. We analyze hundreds of public
+            examples on GitHub to surface the patterns, common practices, and emerging conventions
+            across all three.
         </p>
     </div>
+
+    <!-- File-type tab nav -->
+    {% if tabs %}
+    <nav class="file-type-tabs" aria-label="File type">
+        {% for tab in tabs %}
+        <a href="{{ tab.path }}" class="file-type-tab{% if tab.key == file_type %} active{% endif %}">{{ tab.label }}</a>
+        {% endfor %}
+    </nav>
+    {% endif %}
 
     <!-- Metrics Bar -->
     {% if has_data %}
@@ -393,7 +422,7 @@
             </div>
             <div class="metric-item">
                 <span class="metric-value">{{ metrics.files_processed }}</span>
-                <span class="metric-label">CLAUDE.md Files Processed</span>
+                <span class="metric-label">{{ display_name or 'CLAUDE.md' }} Files Processed</span>
             </div>
             <div class="metric-item">
                 <span class="metric-value">{{ metrics.topics_discovered }}</span>
@@ -415,7 +444,7 @@
         <!-- No data state -->
         <div class="no-data-card">
             <h2>Analysis Not Yet Available</h2>
-            <p>The analysis runs daily at 3 AM GMT, collecting and processing CLAUDE.md files from GitHub.
+            <p>The analysis runs daily at 3 AM GMT, collecting and processing {{ display_name or 'CLAUDE.md' }} files from GitHub.
                Check back after the next scheduled run to see topic analysis results.</p>
         </div>
         {% endif %}
@@ -500,21 +529,21 @@
                 <br><span class="nav-badge">Technical</span>
             </a>
 
-            <a href="/topic-evolution" class="nav-card">
+            <a href="/topic-evolution?type={{ file_type }}" class="nav-card">
                 <h3>Topic Evolution</h3>
                 <p>Track how topics change over time across multiple analysis runs. See topic stability and new topic emergence.</p>
                 <span class="preview-text">{% if metrics.total_repos > 0 %}{{ metrics.total_repos }} files analyzed so far{% else %}Data builds with each daily run{% endif %}</span>
                 <br><span class="nav-badge">Historical</span>
             </a>
 
-            <a href="/trends" class="nav-card">
+            <a href="/trends?type={{ file_type }}" class="nav-card">
                 <h3>Term Trends</h3>
-                <p>See how the most common terms in CLAUDE.md files rise and fall in popularity across daily analysis runs.</p>
+                <p>See how the most common terms in {{ display_name or 'CLAUDE.md' }} files rise and fall in popularity across daily analysis runs.</p>
                 <span class="preview-text">{% if metrics.total_repos > 0 %}{{ metrics.total_repos }} files per run, 15 terms tracked{% else %}Interactive line charts{% endif %}</span>
                 <br><span class="nav-badge">Trends</span>
             </a>
 
-            <a href="/visualization" class="nav-card">
+            <a href="/visualization?type={{ file_type }}" class="nav-card">
                 <h3>Full Visualization</h3>
                 <p>View the complete generated topic visualization with detailed word distributions and topic strengths.</p>
                 <span class="preview-text">Interactive topic breakdown</span>
@@ -529,9 +558,9 @@
         <p><strong>Privacy:</strong> No user data is stored. All analysis is performed in memory on publicly available content. Temporary files are cleaned up after processing.</p>
         <p style="margin-top: 8px;">
             <a href="/how-it-works">How It Works</a> &middot;
-            <a href="/trends">Term Trends</a> &middot;
-            <a href="/topic-evolution">Topic Evolution</a> &middot;
-            <a href="/visualization">Full Visualization</a>
+            <a href="/trends?type={{ file_type }}">Term Trends</a> &middot;
+            <a href="/topic-evolution?type={{ file_type }}">Topic Evolution</a> &middot;
+            <a href="/visualization?type={{ file_type }}">Full Visualization</a>
         </p>
     </div>
 

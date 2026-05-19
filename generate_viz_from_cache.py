@@ -2,18 +2,25 @@
 
 import json
 import os
+import argparse
 import numpy as np
 
 # Import only the functions we need, not the entire app which has cleanup handlers
 import sys
 sys.path.append('.')
-from app import load_analysis_cache, VIS_HTML_PATH
+from app import (
+    load_analysis_cache,
+    paths_for,
+    FILE_TYPES,
+    DEFAULT_FILE_TYPE,
+    create_enhanced_visualization,
+)
 
-def create_mock_lda_model_from_cache():
-    """Create a mock LDA model from cached analysis data."""
-    cache = load_analysis_cache()
+def create_mock_lda_model_from_cache(file_type=DEFAULT_FILE_TYPE):
+    """Create a mock LDA model from cached analysis data for the given file type."""
+    cache = load_analysis_cache(file_type)
     if not cache or not cache.get('success') or not cache.get('topics_data'):
-        print("No valid analysis cache found.")
+        print(f"No valid analysis cache found for {file_type}.")
         return None, None, 0
     
     topics_data = cache['topics_data']
@@ -52,21 +59,33 @@ def create_mock_lda_model_from_cache():
     return model, model.feature_names, analysis_stats
 
 def main():
-    print("Generating visualization from cached analysis data...")
-    
-    model, feature_names, analysis_stats = create_mock_lda_model_from_cache()
+    parser = argparse.ArgumentParser(description="Regenerate viz HTML from cached topic data.")
+    parser.add_argument(
+        "--type", dest="file_type", default=DEFAULT_FILE_TYPE,
+        choices=list(FILE_TYPES.keys()),
+        help="Which file type's cache to render (defaults to claude_md).",
+    )
+    args = parser.parse_args()
+
+    print(f"Generating visualization from cached analysis data for {args.file_type}...")
+
+    model, feature_names, analysis_stats = create_mock_lda_model_from_cache(args.file_type)
     if model is None:
         print("Failed to create model from cache data.")
         return
-    
+
     print(f"Found {len(feature_names)} unique words in {analysis_stats['topics_discovered']} topics")
     print(f"Generating visualization for {analysis_stats['total_documents']} documents")
-    
-    # Generate the visualization
-    create_enhanced_visualization(model, feature_names, analysis_stats['topics_discovered'], analysis_stats)
-    
-    if os.path.exists(VIS_HTML_PATH):
-        print(f"✅ Visualization successfully generated: {VIS_HTML_PATH}")
+
+    viz_path = paths_for(args.file_type)["viz"]
+    display_name = FILE_TYPES[args.file_type]["display_name"]
+    create_enhanced_visualization(
+        model, feature_names, analysis_stats['topics_discovered'], analysis_stats,
+        viz_path=viz_path, display_name=display_name,
+    )
+
+    if os.path.exists(viz_path):
+        print(f"✅ Visualization successfully generated: {viz_path}")
     else:
         print("❌ Failed to generate visualization file")
 

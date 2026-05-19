@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Claude.md Topic Evolution Analysis</title>
+    <title>{{ display_name or 'CLAUDE.md' }} Topic Evolution Analysis</title>
     <link rel="icon" href="{{ url_for('static', filename='favicon.svg') }}" type="image/svg+xml">
     <link rel="icon" href="{{ url_for('static', filename='favicon.ico') }}" type="image/x-icon">
     <link rel="apple-touch-icon" href="{{ url_for('static', filename='favicon.svg') }}">
@@ -157,17 +157,42 @@
             text-decoration: none;
             color: white;
         }
+        .file-type-tabs {
+            display: flex;
+            justify-content: center;
+            gap: 4px;
+            padding: 14px;
+            background: rgba(0,0,0,0.18);
+        }
+        .file-type-tab {
+            color: rgba(255,255,255,0.75);
+            text-decoration: none;
+            padding: 8px 18px;
+            border-radius: 6px;
+            font-size: 0.95em;
+            font-weight: 500;
+            transition: background 0.2s, color 0.2s;
+        }
+        .file-type-tab:hover { color: white; background: rgba(255,255,255,0.08); }
+        .file-type-tab.active { color: white; background: #667eea; }
     </style>
 </head>
 <body>
     <div class="container">
         <div class="header">
-            <h1>Topic Evolution Analysis</h1>
-            <p class="subtitle">Track how Claude.md topics change and evolve over time</p>
+            <h1>{{ display_name or 'CLAUDE.md' }} Topic Evolution</h1>
+            <p class="subtitle">Track how {{ display_name or 'CLAUDE.md' }} topics change and evolve over time</p>
             <div>
-                <a href="/" class="nav-link">← Back to Main</a>
+                <a href="{{ '/' if file_type == 'claude_md' else ('/agents' if file_type == 'agents_md' else '/skills') }}" class="nav-link">← Back to {{ display_name or 'Main' }}</a>
             </div>
         </div>
+        {% if tabs %}
+        <nav class="file-type-tabs" aria-label="File type">
+            {% for tab in tabs %}
+            <a href="/topic-evolution?type={{ tab.key }}" class="file-type-tab{% if tab.is_active %} active{% endif %}">{{ tab.label }}</a>
+            {% endfor %}
+        </nav>
+        {% endif %}
         
         <div class="content">
             <div id="loading" class="loading">
@@ -226,7 +251,7 @@
 
         async function loadEvolutionData() {
             try {
-                const response = await fetch('/api/topic-evolution');
+                const response = await fetch('/api/topic-evolution?type={{ file_type }}');
                 const data = await response.json();
                 
                 if (data.error) {
