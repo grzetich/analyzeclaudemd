@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Term Trends Over Time - Claude.md Analyzer</title>
+    <title>{{ display_name or 'CLAUDE.md' }} Term Trends Over Time</title>
     <link rel="icon" href="{{ url_for('static', filename='favicon.svg') }}" type="image/svg+xml">
     <link rel="icon" href="{{ url_for('static', filename='favicon.ico') }}" type="image/x-icon">
     <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/3.9.1/chart.min.js"></script>
@@ -54,6 +54,25 @@
         .header .nav-links a:hover {
             background: rgba(255,255,255,0.25);
         }
+
+        .file-type-tabs {
+            background: #0b1530;
+            display: flex;
+            justify-content: center;
+            gap: 4px;
+            padding: 12px 20px;
+        }
+        .file-type-tab {
+            color: rgba(255,255,255,0.65);
+            text-decoration: none;
+            padding: 8px 18px;
+            border-radius: 6px;
+            font-size: 0.92em;
+            font-weight: 500;
+            transition: background 0.2s, color 0.2s;
+        }
+        .file-type-tab:hover { color: white; background: rgba(255,255,255,0.08); }
+        .file-type-tab.active { color: white; background: #4fc3f7; }
 
         .content {
             max-width: 1100px;
@@ -203,14 +222,21 @@
 <body>
 
     <div class="header">
-        <h1>Term Trends Over Time</h1>
-        <p class="subtitle">How the most common terms in CLAUDE.md files have changed across daily analysis runs</p>
+        <h1>{{ display_name or 'CLAUDE.md' }} Term Trends Over Time</h1>
+        <p class="subtitle">How the most common terms in {{ display_name or 'CLAUDE.md' }} files have changed across daily analysis runs</p>
         <div class="nav-links">
-            <a href="/">Home</a>
-            <a href="/topic-evolution">Topic Evolution</a>
+            <a href="{{ '/' if file_type == 'claude_md' else ('/agents' if file_type == 'agents_md' else '/skills') }}">Home</a>
+            <a href="/topic-evolution?type={{ file_type }}">Topic Evolution</a>
             <a href="/how-it-works">How It Works</a>
         </div>
     </div>
+    {% if tabs %}
+    <nav class="file-type-tabs" aria-label="File type">
+        {% for tab in tabs %}
+        <a href="/trends?type={{ tab.key }}" class="file-type-tab{% if tab.is_active %} active{% endif %}">{{ tab.label }}</a>
+        {% endfor %}
+    </nav>
+    {% endif %}
 
     <div class="content">
         <div id="loading" class="loading">Loading trend data...</div>
@@ -253,8 +279,8 @@
     </div>
 
     <div class="footer">
-        <a href="/">Home</a> &middot;
-        <a href="/topic-evolution">Topic Evolution</a> &middot;
+        <a href="{{ '/' if file_type == 'claude_md' else ('/agents' if file_type == 'agents_md' else '/skills') }}">Home</a> &middot;
+        <a href="/topic-evolution?type={{ file_type }}">Topic Evolution</a> &middot;
         <a href="/how-it-works">How It Works</a>
     </div>
 
@@ -266,7 +292,7 @@
 
         async function loadTrends() {
             try {
-                const res = await fetch('/api/term-trends');
+                const res = await fetch('/api/term-trends?type={{ file_type }}');
                 const data = await res.json();
 
                 if (data.error) {

@@ -49,6 +49,7 @@ collected_data.json
 
 # Virtual environment
 venv/
+.venv/
 
 # Database
 analysis.db

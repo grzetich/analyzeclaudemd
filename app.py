@@ -68,8 +68,62 @@ HEADERS = {
     "Authorization": f"token {GITHUB_TOKEN}" if GITHUB_TOKEN else "",
     "Accept": "application/vnd.github.v3.text-match+json"
 }
-SEARCH_QUERY = "filename:claude.md"
 BASE_URL = "https://api.github.com/search/code"
+
+# --- Per-file-type configuration ---
+# Each entry drives one analysis pipeline (search, cache, history, viz, topic display).
+# Add a new entry here and routes/templates pick it up via the file_type key.
+FILE_TYPES = {
+    "claude_md": {
+        "search_query": "filename:claude.md",
+        "cache_filename": "last_analysis_claude_md.json",
+        "history_filename": "analysis_history_claude_md.json",
+        "viz_filename": "viz_claude_md.html",
+        "num_topics": 5,
+        "display_name": "CLAUDE.md",
+        "route_path": "/",
+        "topic_meta": [
+            {'icon': '\U0001f4dd', 'color': '#4A90D9', 'desc': 'Code style rules, event handling, and error patterns'},
+            {'icon': '\U0001f4ca', 'color': '#6B7B8D', 'desc': 'Cross-cutting concerns: validation, APIs, and error handling'},
+            {'icon': '⚛️', 'color': '#7C3AED', 'desc': 'React, TypeScript, npm tooling, and client-side patterns'},
+            {'icon': '\U0001f527', 'color': '#059669', 'desc': 'API design, databases, server config, and integrations'},
+            {'icon': '✅', 'color': '#D97706', 'desc': 'Documentation structure, user context, and task workflows'},
+        ],
+    },
+    "agents_md": {
+        "search_query": "filename:agents.md",
+        "cache_filename": "last_analysis_agents_md.json",
+        "history_filename": "analysis_history_agents_md.json",
+        "viz_filename": "viz_agents_md.html",
+        "num_topics": 5,
+        "display_name": "AGENTS.md",
+        "route_path": "/agents",
+        "topic_meta": [
+            {'icon': '\U0001f528', 'color': '#4A90D9', 'desc': 'Build commands, package managers, and dependency setup'},
+            {'icon': '\U0001f9ea', 'color': '#059669', 'desc': 'Test runners, linting, and validation workflows'},
+            {'icon': '✏️', 'color': '#D97706', 'desc': 'Code style, formatting conventions, and naming rules'},
+            {'icon': '\U0001f3db️', 'color': '#7C3AED', 'desc': 'Project architecture, modules, and directory structure'},
+            {'icon': '⛔', 'color': '#DC2626', 'desc': 'Constraints, prohibitions, and agent guardrails'},
+        ],
+    },
+    "skill_md": {
+        "search_query": "filename:skill.md",
+        "cache_filename": "last_analysis_skill_md.json",
+        "history_filename": "analysis_history_skill_md.json",
+        "viz_filename": "viz_skill_md.html",
+        "num_topics": 5,
+        "display_name": "SKILL.md",
+        "route_path": "/skills",
+        "topic_meta": [
+            {'icon': '\U0001f4cb', 'color': '#4A90D9', 'desc': 'Frontmatter fields: name, description, and metadata'},
+            {'icon': '\U0001f50d', 'color': '#7C3AED', 'desc': 'Progressive disclosure and when-to-invoke triggers'},
+            {'icon': '\U0001f3af', 'color': '#059669', 'desc': 'Scoping rules: skill boundaries and usage scenarios'},
+            {'icon': '\U0001f4d6', 'color': '#D97706', 'desc': 'Instructions, examples, and walkthroughs'},
+            {'icon': '\U0001f517', 'color': '#6B7B8D', 'desc': 'Tool references, file paths, and cross-skill links'},
+        ],
+    },
+}
+DEFAULT_FILE_TYPE = "claude_md"
 
 # NLTK downloads (run once on startup or when container builds)
 def download_nltk_data():
@@ -109,12 +163,19 @@ lemmatizer = WordNetLemmatizer()
 # Use data/ directory (committed to repo) so historical data survives redeploys.
 # On Render the repo is at /opt/render/project/src, so data/ lives there.
 PERSISTENT_DATA_DIR = "/opt/render/project/src/data" if os.name != 'nt' else "data"
-VIS_HTML_PATH = os.path.join(PERSISTENT_DATA_DIR, "lda_visualization.html") if os.name != 'nt' else "templates/lda_visualization.html"
-ANALYSIS_CACHE_PATH = os.path.join(PERSISTENT_DATA_DIR, "last_analysis.json")
-ANALYSIS_HISTORY_PATH = os.path.join(PERSISTENT_DATA_DIR, "analysis_history.json")
 LOG_PATH = "/tmp/claude_analyzer.log" if os.name != 'nt' else "logs/claude_analyzer.log"
 ANALYSIS_LOGS_DIR = "/tmp/analysis_logs/" if os.name != 'nt' else "logs/analysis_logs/"
 TEMP_DIRS = ["/tmp", "/tmp/analysis_logs", PERSISTENT_DATA_DIR] if os.name != 'nt' else ["temp", "data", "logs", "logs/analysis_logs"]
+
+
+def paths_for(file_type):
+    """Return cache/history/viz file paths for a given file type."""
+    cfg = FILE_TYPES[file_type]
+    return {
+        "cache": os.path.join(PERSISTENT_DATA_DIR, cfg["cache_filename"]),
+        "history": os.path.join(PERSISTENT_DATA_DIR, cfg["history_filename"]),
+        "viz": os.path.join(PERSISTENT_DATA_DIR, cfg["viz_filename"]),
+    }
 
 # Analysis scheduling - runs daily at 3 AM GMT
 ANALYSIS_TARGET_HOUR_GMT = 3  # 3 AM GMT
@@ -270,13 +331,15 @@ def create_analysis_logger(analysis_timestamp):
 # --- Cleanup Functions ---
 
 def cleanup_temp_files():
-    """Clean up temporary files created during analysis."""
-    try:
-        if os.path.exists(VIS_HTML_PATH):
-            os.remove(VIS_HTML_PATH)
-            print(f"Cleaned up visualization file: {VIS_HTML_PATH}")
-    except Exception as e:
-        print(f"Error during cleanup: {e}")
+    """Clean up temporary visualization files for every configured file type."""
+    for file_type in FILE_TYPES:
+        viz_path = paths_for(file_type)["viz"]
+        try:
+            if os.path.exists(viz_path):
+                os.remove(viz_path)
+                print(f"Cleaned up visualization file: {viz_path}")
+        except Exception as e:
+            print(f"Error during cleanup of {viz_path}: {e}")
 
 def cleanup_on_analysis_complete():
     """Clean up temporary data after successful visualization generation."""
@@ -286,10 +349,17 @@ def cleanup_on_analysis_complete():
 
 # --- Persist data files to GitHub repo ---
 GITHUB_REPO = "grzetich/analyzeclaudemd"
-DATA_FILES_TO_PERSIST = [
-    ("data/analysis_history.json", ANALYSIS_HISTORY_PATH),
-    ("data/last_analysis.json", ANALYSIS_CACHE_PATH),
-]
+
+
+def _files_to_persist():
+    """Build the list of (repo_path, local_path) pairs for every file type's cache/history."""
+    pairs = []
+    for file_type in FILE_TYPES:
+        p = paths_for(file_type)
+        pairs.append((f"data/{FILE_TYPES[file_type]['history_filename']}", p["history"]))
+        pairs.append((f"data/{FILE_TYPES[file_type]['cache_filename']}", p["cache"]))
+    return pairs
+
 
 def persist_data_to_repo():
     """Push data files back to the GitHub repo so they survive Render rebuilds."""
@@ -303,7 +373,7 @@ def persist_data_to_repo():
     }
     any_updated = False
 
-    for repo_path, local_path in DATA_FILES_TO_PERSIST:
+    for repo_path, local_path in _files_to_persist():
         try:
             if not os.path.exists(local_path):
                 logging.info(f"Skipping {repo_path}: local file does not exist")
@@ -342,55 +412,57 @@ def persist_data_to_repo():
 
     return any_updated
 
-def save_analysis_cache(success=False, message="", timestamp=None, files_collected=0, topics_discovered=0, topics_data=None, log_content=""):
-    """Save analysis results to cache file and add to history."""
+def save_analysis_cache(file_type, success=False, message="", timestamp=None, files_collected=0, topics_discovered=0, topics_data=None, log_content=""):
+    """Save analysis results to cache file and add to history for a specific file type."""
     if timestamp is None:
         timestamp = datetime.now().isoformat()
-    
+
+    cache_path = paths_for(file_type)["cache"]
+
     cache_data = {
         'timestamp': timestamp,
         'success': success,
         'message': message,
         'files_collected': files_collected,
         'topics_discovered': topics_discovered,
-        'topics_data': topics_data  # Store detailed topic information
+        'topics_data': topics_data,
+        'file_type': file_type,
     }
-    
-    try:
-        # Save to JSON (no database)  
-        os.makedirs(os.path.dirname(ANALYSIS_CACHE_PATH), exist_ok=True)
-        with open(ANALYSIS_CACHE_PATH, 'w') as f:
-            json.dump(cache_data, f)
-            
-        # Add to historical data (fallback)
-        if not db:
-            add_to_analysis_history(cache_data)
-        
-        # Log the result
-        if success:
-            logging.info(f"Analysis completed successfully: {files_collected} files, {topics_discovered} topics")
-        else:
-            logging.error(f"Analysis failed: {message}")
-            
-    except Exception as e:
-        logging.error(f"Error saving analysis cache: {e}")
-        print(f"Error saving analysis cache: {e}")
 
-def load_analysis_cache():
-    """Load analysis results from cache file."""
     try:
-        if os.path.exists(ANALYSIS_CACHE_PATH):
-            with open(ANALYSIS_CACHE_PATH, 'r') as f:
+        os.makedirs(os.path.dirname(cache_path), exist_ok=True)
+        with open(cache_path, 'w') as f:
+            json.dump(cache_data, f)
+
+        if not db:
+            add_to_analysis_history(file_type, cache_data)
+
+        if success:
+            logging.info(f"[{file_type}] Analysis completed successfully: {files_collected} files, {topics_discovered} topics")
+        else:
+            logging.error(f"[{file_type}] Analysis failed: {message}")
+
+    except Exception as e:
+        logging.error(f"[{file_type}] Error saving analysis cache: {e}")
+        print(f"[{file_type}] Error saving analysis cache: {e}")
+
+def load_analysis_cache(file_type):
+    """Load analysis results from cache file for a specific file type."""
+    cache_path = paths_for(file_type)["cache"]
+    try:
+        if os.path.exists(cache_path):
+            with open(cache_path, 'r') as f:
                 return json.load(f)
     except Exception as e:
-        logging.error(f"Error loading analysis cache: {e}")
-        print(f"Error loading analysis cache: {e}")
+        logging.error(f"[{file_type}] Error loading analysis cache: {e}")
+        print(f"[{file_type}] Error loading analysis cache: {e}")
     return None
 
-def add_to_analysis_history(analysis_data):
-    """Add analysis result to historical data."""
+def add_to_analysis_history(file_type, analysis_data):
+    """Add analysis result to historical data for a specific file type."""
+    history_path = paths_for(file_type)["history"]
     try:
-        history = load_analysis_history()
+        history = load_analysis_history(file_type)
         history.append(analysis_data)
 
         # Trim history but protect successful entries from being evicted by failures.
@@ -398,42 +470,38 @@ def add_to_analysis_history(analysis_data):
         if len(history) > MAX_HISTORY_ENTRIES:
             successful = [h for h in history if h.get('success')]
             failed = [h for h in history if not h.get('success')]
-            # Keep the most recent successful entries (up to the cap)
             successful = successful[-MAX_HISTORY_ENTRIES:]
-            # Keep only the last 5 failures for diagnostics
             failed = failed[-5:]
-            # Merge and sort by timestamp
             history = sorted(successful + failed, key=lambda h: h.get('timestamp', ''))
-        
-        # Ensure history directory exists
-        os.makedirs(os.path.dirname(ANALYSIS_HISTORY_PATH), exist_ok=True)
-        
-        with open(ANALYSIS_HISTORY_PATH, 'w') as f:
-            json.dump(history, f, indent=2)
-            
-    except Exception as e:
-        logging.error(f"Error adding to analysis history: {e}")
-        print(f"Error adding to analysis history: {e}")
 
-def load_analysis_history():
-    """Load historical analysis results."""
+        os.makedirs(os.path.dirname(history_path), exist_ok=True)
+
+        with open(history_path, 'w') as f:
+            json.dump(history, f, indent=2)
+
+    except Exception as e:
+        logging.error(f"[{file_type}] Error adding to analysis history: {e}")
+        print(f"[{file_type}] Error adding to analysis history: {e}")
+
+def load_analysis_history(file_type):
+    """Load historical analysis results for a specific file type."""
+    history_path = paths_for(file_type)["history"]
     try:
         if db:
             return db.get_analysis_history()
         else:
-            # Fallback to JSON files
-            if os.path.exists(ANALYSIS_HISTORY_PATH):
-                with open(ANALYSIS_HISTORY_PATH, 'r') as f:
+            if os.path.exists(history_path):
+                with open(history_path, 'r') as f:
                     return json.load(f)
     except Exception as e:
-        logging.error(f"Error loading analysis history: {e}")
-        print(f"Error loading analysis history: {e}")
+        logging.error(f"[{file_type}] Error loading analysis history: {e}")
+        print(f"[{file_type}] Error loading analysis history: {e}")
     return []
 
-def get_analysis_stats():
-    """Get analysis statistics from history."""
+def get_analysis_stats(file_type=DEFAULT_FILE_TYPE):
+    """Get analysis statistics from history for a specific file type."""
     try:
-        history = load_analysis_history()
+        history = load_analysis_history(file_type)
         if not history:
             return {
                 'total_analyses': 0,
@@ -516,10 +584,10 @@ def find_best_topic_matches(current_topics, historical_topics, threshold=0.3):
     
     return matches
 
-def analyze_topic_evolution():
-    """Analyze how topics have evolved over time across all historical runs."""
+def analyze_topic_evolution(file_type=DEFAULT_FILE_TYPE):
+    """Analyze how topics have evolved over time across all historical runs for a given file type."""
     try:
-        history = load_analysis_history()
+        history = load_analysis_history(file_type)
         if len(history) < 2:
             return {'error': 'Need at least 2 analysis runs to analyze evolution'}
         
@@ -583,40 +651,40 @@ def analyze_topic_evolution():
         logging.error(f"Error analyzing topic evolution: {e}")
         return {'error': str(e)}
 
-def should_run_analysis():
-    """Check if analysis should run based on daily 3 AM GMT schedule."""
-    cache = load_analysis_cache()
+def _file_type_is_fresh(file_type, now_gmt):
+    """Return True if this file type has a cache entry newer than the most recent 3 AM GMT mark."""
+    cache = load_analysis_cache(file_type)
     if not cache:
-        # Only run if it's currently around 3 AM GMT, not just because there's no cache
-        from datetime import timezone
-        now_gmt = datetime.now(timezone.utc)
-        current_hour = now_gmt.hour
-        # Run if it's between 3-4 AM GMT (1 hour window)
-        return current_hour == ANALYSIS_TARGET_HOUR_GMT
-    
+        return False
     try:
         from datetime import timezone
-        
-        # Get the last run time
         last_run = datetime.fromisoformat(cache['timestamp'])
         if last_run.tzinfo is None:
             last_run = last_run.replace(tzinfo=timezone.utc)
-        
-        # Get current time in GMT
-        now_gmt = datetime.now(timezone.utc)
-        
-        # Get today's 3 AM GMT
+
         today_3am = now_gmt.replace(hour=ANALYSIS_TARGET_HOUR_GMT, minute=0, second=0, microsecond=0)
-        
-        # If it's past 3 AM today and we haven't run since yesterday's 3 AM
-        if now_gmt >= today_3am:
-            yesterday_3am = today_3am - timedelta(days=1)
-            return last_run < yesterday_3am
-        else:
-            # If it's before 3 AM today, check if we need to run (should have run yesterday)
-            yesterday_3am = today_3am - timedelta(days=1)
-            return last_run < yesterday_3am
-            
+        # The latest 3 AM mark is today's if we're past it, otherwise yesterday's.
+        latest_mark = today_3am if now_gmt >= today_3am else today_3am - timedelta(days=1)
+        return last_run >= latest_mark
+    except Exception as e:
+        logging.error(f"[{file_type}] Error checking cache freshness: {e}")
+        return False
+
+def should_run_analysis():
+    """Run analysis when every configured file type has a stale (or missing) cache."""
+    try:
+        from datetime import timezone
+        now_gmt = datetime.now(timezone.utc)
+
+        # If any file type already ran since the most recent 3 AM mark, hold off — the
+        # full multi-type sweep already happened today (or is in progress).
+        for file_type in FILE_TYPES:
+            if _file_type_is_fresh(file_type, now_gmt):
+                return False
+
+        # All stale. Only kick off the sweep during the 3 AM GMT window so we don't
+        # hammer GitHub if the app boots at a random hour with no cache yet.
+        return now_gmt.hour == ANALYSIS_TARGET_HOUR_GMT
     except Exception as e:
         logging.error(f"Error checking analysis schedule: {e}")
         return True
@@ -681,148 +749,161 @@ def run_analysis_now():
     print("Starting analysis...")
     logging.info("Starting on-demand analysis")
     
+    def _run_one_file_type(file_type, analysis_logger):
+        """Run a full collect+LDA pass for a single file type. Returns True on success."""
+        cfg = FILE_TYPES[file_type]
+        viz_path = paths_for(file_type)["viz"]
+        search_query = cfg["search_query"]
+        num_topics = cfg["num_topics"]
+
+        if analysis_logger:
+            analysis_logger.info(f"--- [{file_type}] Starting collection (query={search_query}) ---")
+        logging.info(f"[{file_type}] Collecting files from GitHub (query={search_query})...")
+
+        collected_documents = get_claude_md_files(search_query, HEADERS, max_files=500)
+
+        collection_memory = log_memory_usage(f"[{file_type}] after GitHub collection")
+        if analysis_logger:
+            analysis_logger.info(f"[{file_type}] Memory after collection: RSS={collection_memory['rss_mb']}MB")
+
+        if not collected_documents:
+            error_msg = f"No files found for query {search_query}"
+            logging.warning(f"[{file_type}] {error_msg}")
+            if analysis_logger:
+                analysis_logger.warning(f"[{file_type}] {error_msg}")
+            save_analysis_cache(file_type, False, error_msg, files_collected=0, topics_discovered=0)
+            return False
+
+        num_files = len(collected_documents)
+        logging.info(f"[{file_type}] Collected {num_files} files, starting LDA analysis...")
+        if analysis_logger:
+            analysis_logger.info(f"[{file_type}] Successfully collected {num_files} files")
+
+        pre_lda_memory = cleanup_memory()
+        if analysis_logger:
+            analysis_logger.info(f"[{file_type}] Memory before LDA: RSS={pre_lda_memory['rss_mb']}MB")
+
+        success, topics_data = perform_lda_and_visualize(
+            collected_documents, num_topics=num_topics, viz_path=viz_path,
+            display_name=cfg.get("display_name", "CLAUDE.md"),
+        )
+
+        # Aggressive cleanup before the next file type's collection starts.
+        collected_documents.clear()
+        del collected_documents
+        post_lda_memory = cleanup_memory()
+        if analysis_logger:
+            analysis_logger.info(f"[{file_type}] Memory after LDA cleanup: RSS={post_lda_memory['rss_mb']}MB")
+
+        if success:
+            success_msg = f"Analysis complete with {num_files} files"
+            logging.info(f"[{file_type}] Completed with {num_files} files")
+            if analysis_logger:
+                analysis_logger.info(f"[{file_type}] LDA succeeded, viz written to {viz_path}")
+            save_analysis_cache(
+                file_type, True, success_msg,
+                files_collected=num_files, topics_discovered=num_topics, topics_data=topics_data,
+            )
+            return True
+
+        error_msg = "Analysis failed during LDA processing"
+        logging.error(f"[{file_type}] {error_msg}")
+        if analysis_logger:
+            analysis_logger.error(f"[{file_type}] LDA processing failed")
+        save_analysis_cache(file_type, False, error_msg, files_collected=num_files, topics_discovered=0)
+        return False
+
     def analysis_worker():
         analysis_start_time = datetime.now()
         analysis_logger = None
         log_filepath = None
-        
+
         try:
-            # Create individual analysis logger
             analysis_logger, log_filepath = create_analysis_logger(analysis_start_time)
-            
-            # Log to both main log and individual analysis log
-            logging.info("Starting scheduled analysis...")
+
+            logging.info("Starting scheduled analysis sweep...")
             if analysis_logger:
-                analysis_logger.info("=== ANALYSIS RUN STARTED ===")
+                analysis_logger.info("=== ANALYSIS SWEEP STARTED ===")
                 analysis_logger.info(f"Analysis timestamp: {analysis_start_time.isoformat()}")
-            
-            # Initial memory check
+                analysis_logger.info(f"File types to process: {list(FILE_TYPES.keys())}")
+
             initial_memory = log_memory_usage("at analysis start")
             if analysis_logger:
                 analysis_logger.info(f"Initial memory: RSS={initial_memory['rss_mb']}MB, VMS={initial_memory['vms_mb']}MB")
-            
+
             if not GITHUB_TOKEN:
                 error_msg = "GitHub PAT not configured"
                 logging.error(error_msg)
                 if analysis_logger:
                     analysis_logger.error(error_msg)
-                    analysis_logger.info("=== ANALYSIS RUN FAILED ===")
-                save_analysis_cache(False, error_msg, files_collected=0, topics_discovered=0)
+                    analysis_logger.info("=== ANALYSIS SWEEP FAILED ===")
+                # Record the failure against every file type so the dashboards reflect it.
+                for file_type in FILE_TYPES:
+                    save_analysis_cache(file_type, False, error_msg, files_collected=0, topics_discovered=0)
                 return
-            
-            logging.info("Collecting claude.md files from GitHub...")
-            if analysis_logger:
-                analysis_logger.info("Starting GitHub file collection (max 500 files)...")
-            
-            collected_documents = get_claude_md_files(SEARCH_QUERY, HEADERS, max_files=500)
-            
-            # Memory check after collection
-            collection_memory = log_memory_usage("after GitHub collection")
-            if analysis_logger:
-                analysis_logger.info(f"Memory after collection: RSS={collection_memory['rss_mb']}MB, VMS={collection_memory['vms_mb']}MB")
-            
-            if not collected_documents:
-                error_msg = "No claude.md files found"
-                logging.warning(error_msg)
-                if analysis_logger:
-                    analysis_logger.warning(error_msg)
-                    analysis_logger.info("=== ANALYSIS RUN COMPLETED (NO DATA) ===")
-                save_analysis_cache(False, error_msg, files_collected=0, topics_discovered=0)
-                return
-            
-            num_files = len(collected_documents)
-            logging.info(f"Collected {num_files} files, starting LDA analysis...")
-            if analysis_logger:
-                analysis_logger.info(f"Successfully collected {num_files} claude.md files")
-                analysis_logger.info("Starting LDA topic modeling analysis...")
-            
-            # Pre-LDA memory cleanup
-            pre_lda_memory = cleanup_memory()
-            if analysis_logger:
-                analysis_logger.info(f"Memory before LDA: RSS={pre_lda_memory['rss_mb']}MB")
-            
-            success, topics_data = perform_lda_and_visualize(collected_documents, num_topics=5)
-            
-            # Clean up memory aggressively after LDA
-            collected_documents.clear()
-            del collected_documents
-            post_lda_memory = cleanup_memory()
-            if analysis_logger:
-                analysis_logger.info(f"Memory after LDA cleanup: RSS={post_lda_memory['rss_mb']}MB")
-            
-            if success:
-                success_msg = f"Analysis complete with {num_files} files"
-                logging.info(f"Scheduled analysis completed successfully with {num_files} files")
-                if analysis_logger:
-                    analysis_logger.info("LDA analysis completed successfully")
-                    analysis_logger.info(f"Topics discovered: 5")
-                    analysis_logger.info(f"Visualization generated: {VIS_HTML_PATH}")
-                    
-                    # Final memory report using enhanced memory manager
-                    try:
-                        memory_manager = get_memory_manager(analysis_logger)
-                        final_report = memory_manager.log_final_report()
-                        analysis_logger.info(f"Peak memory usage: {final_report['current']['rss']}MB RSS")
-                        analysis_logger.info(f"Total GC collections: {final_report['gc_stats']['total_collections']}")
-                    except Exception as mem_error:
-                        analysis_logger.warning(f"Could not generate final memory report: {mem_error}")
-                    
-                    analysis_logger.info("=== ANALYSIS RUN COMPLETED SUCCESSFULLY ===")
-                
-                # Get log content for storage
-                log_content = ""
-                if log_filepath and os.path.exists(log_filepath):
-                    try:
-                        with open(log_filepath, 'r') as f:
-                            log_content = f.read()
-                    except Exception as e:
-                        logging.warning(f"Could not read log content: {e}")
-                
-                save_analysis_cache(True, success_msg, files_collected=num_files, topics_discovered=5, topics_data=topics_data, log_content=log_content)
-                cleanup_on_analysis_complete()
 
-                # Persist data files to GitHub repo so they survive Render rebuilds
+            results = {}
+            file_types_list = list(FILE_TYPES.keys())
+            for i, file_type in enumerate(file_types_list):
                 try:
-                    persist_data_to_repo()
-                except Exception as persist_error:
-                    logging.warning(f"Could not persist data to repo: {persist_error}")
+                    results[file_type] = _run_one_file_type(file_type, analysis_logger)
+                except Exception as ft_err:
+                    logging.error(f"[{file_type}] Unexpected error during run: {ft_err}", exc_info=True)
+                    if analysis_logger:
+                        analysis_logger.error(f"[{file_type}] Unexpected error: {ft_err}", exc_info=True)
+                    save_analysis_cache(file_type, False, f"Unexpected error: {ft_err}",
+                                        files_collected=0, topics_discovered=0)
+                    results[file_type] = False
 
-                # Final comprehensive memory cleanup
+                # Stay clear of the 30 req/min code-search rate limit between file types,
+                # and give the memory manager room to settle before the next collection.
+                cleanup_memory()
+                if i < len(file_types_list) - 1:
+                    if analysis_logger:
+                        analysis_logger.info("Sleeping 60s before next file type to respect GitHub rate limits...")
+                    time.sleep(60)
+
+            if analysis_logger:
+                analysis_logger.info(f"Sweep results: {results}")
                 try:
-                    memory_manager = get_memory_manager(logging.getLogger(__name__))
-                    memory_manager.cleanup_resources('analysis-complete')
-                except Exception as cleanup_error:
-                    logging.warning(f"Final cleanup warning: {cleanup_error}")
-                
-                print("Analysis completed successfully")
-            else:
-                error_msg = "Analysis failed during LDA processing"
-                logging.error(error_msg)
-                if analysis_logger:
-                    analysis_logger.error("LDA processing failed")
-                    analysis_logger.info("=== ANALYSIS RUN FAILED ===")
-                save_analysis_cache(False, error_msg, files_collected=num_files, topics_discovered=0)
-                print("Analysis failed")
-                
+                    memory_manager = get_memory_manager(analysis_logger)
+                    final_report = memory_manager.log_final_report()
+                    analysis_logger.info(f"Peak memory usage: {final_report['current']['rss']}MB RSS")
+                    analysis_logger.info(f"Total GC collections: {final_report['gc_stats']['total_collections']}")
+                except Exception as mem_error:
+                    analysis_logger.warning(f"Could not generate final memory report: {mem_error}")
+                analysis_logger.info("=== ANALYSIS SWEEP COMPLETED ===")
+
+            cleanup_on_analysis_complete()
+
+            try:
+                persist_data_to_repo()
+            except Exception as persist_error:
+                logging.warning(f"Could not persist data to repo: {persist_error}")
+
+            try:
+                memory_manager = get_memory_manager(logging.getLogger(__name__))
+                memory_manager.cleanup_resources('analysis-complete')
+            except Exception as cleanup_error:
+                logging.warning(f"Final cleanup warning: {cleanup_error}")
+
+            print(f"Analysis sweep done: {results}")
+
         except Exception as e:
             error_msg = f"Analysis error: {str(e)}"
             logging.error(f"Analysis error: {e}", exc_info=True)
             if analysis_logger:
-                analysis_logger.error(f"Unexpected error during analysis: {e}", exc_info=True)
-                analysis_logger.info("=== ANALYSIS RUN FAILED WITH ERROR ===")
-            save_analysis_cache(False, error_msg, files_collected=0, topics_discovered=0)
-            print(f"Analysis error: {e}")
+                analysis_logger.error(f"Unexpected error during analysis sweep: {e}", exc_info=True)
+                analysis_logger.info("=== ANALYSIS SWEEP FAILED WITH ERROR ===")
+            print(f"Analysis sweep error: {e}")
         finally:
-            # Close individual analysis logger
             if analysis_logger:
                 for handler in analysis_logger.handlers:
                     handler.close()
                     analysis_logger.removeHandler(handler)
-                
-                # Log the final log file location to main log
                 if log_filepath:
                     logging.info(f"Individual analysis log saved to: {log_filepath}")
-    
+
     last_analysis_thread = threading.Thread(target=analysis_worker)
     last_analysis_thread.daemon = True
     last_analysis_thread.start()
@@ -967,10 +1048,14 @@ def preprocess_text(text):
     tokens = [lemmatizer.lemmatize(word) for word in tokens]
     return tokens
 
-def perform_lda_and_visualize(documents, num_topics=5):
+def perform_lda_and_visualize(documents, num_topics=5, viz_path=None, display_name="CLAUDE.md"):
     """
-    Performs NMF topic modeling on the given documents and creates an HTML visualization.
+    Performs NMF topic modeling on the given documents and writes an HTML visualization
+    to viz_path. viz_path is required; the legacy single-path module constant is gone.
+    display_name labels the visualization header.
     """
+    if viz_path is None:
+        raise ValueError("perform_lda_and_visualize now requires viz_path (no module-level default)")
     if not documents:
         print("No documents provided for NMF analysis.")
         return False, None
@@ -1037,13 +1122,13 @@ def perform_lda_and_visualize(documents, num_topics=5):
         }
 
         topics_data = extract_detailed_topics_data(nmf_model, feature_names, num_topics)
-        create_enhanced_visualization(nmf_model, feature_names, num_topics, analysis_stats)
+        create_enhanced_visualization(nmf_model, feature_names, num_topics, analysis_stats, viz_path=viz_path, display_name=display_name)
 
         del processed_docs, doc_term_matrix, nmf_model, vectorizer
         final_memory = cleanup_memory()
         logging.info(f"NMF complete with cleanup - final memory: RSS={final_memory['rss_mb']}MB")
 
-        print(f"Visualization saved to {VIS_HTML_PATH}")
+        print(f"Visualization saved to {viz_path}")
         return True, topics_data
     except Exception as e:
         import traceback
@@ -1117,10 +1202,13 @@ def generate_topic_label(top_words):
         # Fallback: use the top 2 words
         return f"{top_words[0].title()} & {top_words[1].title()}"
 
-def create_enhanced_visualization(lda_model, feature_names, num_topics, analysis_stats):
+def create_enhanced_visualization(lda_model, feature_names, num_topics, analysis_stats, viz_path=None, display_name="CLAUDE.md"):
     """
     Creates an enhanced HTML visualization of LDA topics with better clarity.
+    Writes the HTML to viz_path (required). display_name labels the page header.
     """
+    if viz_path is None:
+        raise ValueError("create_enhanced_visualization now requires viz_path")
     # Calculate topic strengths for relative sizing
     topic_strengths = []
     for topic in lda_model.components_:
@@ -1142,7 +1230,7 @@ def create_enhanced_visualization(lda_model, feature_names, num_topics, analysis
     <!DOCTYPE html>
     <html>
     <head>
-        <title>Claude.md Topic Analysis - Enhanced Visualization</title>
+        <title>__DISPLAY_NAME__ Topic Analysis - Enhanced Visualization</title>
         <meta charset="UTF-8">
         <style>
             * { box-sizing: border-box; }
@@ -1362,8 +1450,8 @@ def create_enhanced_visualization(lda_model, feature_names, num_topics, analysis
     <body>
         <div class="container">
             <div class="header">
-                <h1>Claude.md Topic Analysis</h1>
-                <div class="subtitle">Discovering patterns in Claude documentation across GitHub repositories</div>
+                <h1>__DISPLAY_NAME__ Topic Analysis</h1>
+                <div class="subtitle">Discovering patterns in __DISPLAY_NAME__ files across GitHub repositories</div>
                 <div class="stats-grid">
     """
     
@@ -1394,7 +1482,7 @@ def create_enhanced_visualization(lda_model, feature_names, num_topics, analysis
                 <div class="topics-intro">
                     <h3 style="margin-top: 0; color: #2c3e50;">What are these topics?</h3>
                     <p style="margin-bottom: 0; line-height: 1.6;">
-                        Each topic represents a common theme found across Claude.md files. The words shown are the most characteristic 
+                        Each topic represents a common theme found across __DISPLAY_NAME__ files. The words shown are the most characteristic
                         terms for that topic, sized by their importance. Topics with stronger presence in the dataset appear more prominent.
                     </p>
                 </div>
@@ -1484,40 +1572,46 @@ def create_enhanced_visualization(lda_model, feature_names, num_topics, analysis
     </html>
     """
     
+    # Swap in the file-type display name without f-string formatting (CSS contains
+    # many literal { and } that would otherwise need escaping).
+    html_content = html_content.replace("__DISPLAY_NAME__", display_name)
+
     try:
-        # Ensure directory exists for the file
-        os.makedirs(os.path.dirname(VIS_HTML_PATH), exist_ok=True)
-        with open(VIS_HTML_PATH, 'w', encoding='utf-8') as f:
+        os.makedirs(os.path.dirname(viz_path), exist_ok=True)
+        with open(viz_path, 'w', encoding='utf-8') as f:
             f.write(html_content)
     except Exception as e:
-        print(f"Error writing visualization file: {e}")
+        print(f"Error writing visualization file {viz_path}: {e}")
         raise
 
-def create_simple_visualization(lda_model, feature_names, num_topics):
+def create_simple_visualization(lda_model, feature_names, num_topics, viz_path=None):
     """
     Creates a simple HTML visualization of LDA topics (legacy function for backward compatibility).
     """
-    # For backward compatibility, we'll just call the enhanced version with default stats
     analysis_stats = {
         'total_documents': 0,
         'processed_documents': 0,
         'vocabulary_size': len(feature_names),
         'topics_discovered': num_topics
     }
-    create_enhanced_visualization(lda_model, feature_names, num_topics, analysis_stats)
+    create_enhanced_visualization(lda_model, feature_names, num_topics, analysis_stats, viz_path=viz_path)
 
 # --- Flask Routes ---
 
-@app.route('/')
-def index():
-    """Renders the main page with analysis data."""
+@app.route('/', defaults={'file_type': 'claude_md'})
+@app.route('/agents', defaults={'file_type': 'agents_md'})
+@app.route('/skills', defaults={'file_type': 'skill_md'})
+def index(file_type):
+    """Renders the main page with analysis data for one of the configured file types."""
+    if file_type not in FILE_TYPES:
+        file_type = DEFAULT_FILE_TYPE
+
     debug_mode = app.debug or os.getenv('FLASK_DEBUG', '0') == '1' or os.getenv('FLASK_ENV') == 'development'
 
-    # Load analysis data for the homepage
-    cache = load_analysis_cache()
-    history = load_analysis_history()
+    cache = load_analysis_cache(file_type)
+    history = load_analysis_history(file_type)
+    cfg = FILE_TYPES[file_type]
 
-    # Build metrics
     metrics = {
         'total_repos': 0,
         'files_processed': 0,
@@ -1525,7 +1619,6 @@ def index():
         'topics_discovered': 0,
     }
 
-    # Build topics for display
     topics_display = []
     key_findings = []
 
@@ -1538,15 +1631,8 @@ def index():
         except Exception:
             metrics['last_analysis'] = None
 
-        # Build topic display data from cached topics
         topics_data = cache.get('topics_data', [])
-        topic_meta = [
-            {'icon': '\U0001f4dd', 'color': '#4A90D9', 'desc': 'Code style rules, event handling, and error patterns'},
-            {'icon': '\U0001f4ca', 'color': '#6B7B8D', 'desc': 'Cross-cutting concerns: validation, APIs, and error handling'},
-            {'icon': '\u269b\ufe0f', 'color': '#7C3AED', 'desc': 'React, TypeScript, npm tooling, and client-side patterns'},
-            {'icon': '\U0001f527', 'color': '#059669', 'desc': 'API design, databases, server config, and integrations'},
-            {'icon': '\u2705', 'color': '#D97706', 'desc': 'Documentation structure, user context, and task workflows'},
-        ]
+        topic_meta = cfg.get('topic_meta', [])
 
         for i, topic in enumerate(topics_data):
             meta = topic_meta[i] if i < len(topic_meta) else {'icon': '\U0001f4c4', 'color': '#667eea', 'desc': ''}
@@ -1566,13 +1652,10 @@ def index():
                 'words': word_bars,
             })
 
-        # Generate key findings
         if topics_data:
-            # Most prevalent topic
             strongest = max(topics_data, key=lambda t: t.get('topic_strength', 0))
             key_findings.append(f'"{strongest.get("label", "Unknown")}" is the most prevalent topic across analyzed repositories.')
 
-            # Cross-cutting terms
             word_counts = {}
             for topic in topics_data:
                 for w in topic.get('top_words', [])[:10]:
@@ -1581,16 +1664,20 @@ def index():
             if cross_cutting:
                 key_findings.append(f'Cross-cutting terms like "{", ".join(cross_cutting[:4])}" appear across 3+ topics.')
 
-            # Total unique terms
             all_words = set()
             for topic in topics_data:
                 all_words.update(topic.get('top_words', []))
             key_findings.append(f'{len(all_words)} unique terms identified across all {len(topics_data)} topics.')
 
-            # Analysis count
             successful_runs = len([h for h in history if h.get('success')])
             if successful_runs > 1:
                 key_findings.append(f'Analysis has been run {successful_runs} times, tracking topic evolution over time.')
+
+    # Tab nav data \u2014 passed to template so the active tab is highlighted.
+    tabs = [
+        {'key': ft, 'label': FILE_TYPES[ft]['display_name'], 'path': FILE_TYPES[ft]['route_path']}
+        for ft in FILE_TYPES
+    ]
 
     return render_template('index.html',
         debug_mode=debug_mode,
@@ -1598,16 +1685,22 @@ def index():
         topics=topics_display,
         key_findings=key_findings,
         has_data=bool(cache and cache.get('success')),
+        file_type=file_type,
+        display_name=cfg['display_name'],
+        tabs=tabs,
     )
 
 @app.route('/analyze', methods=['GET', 'POST'])
 def analyze_data():
     """
-    GET: Returns cached analysis status. Analysis runs automatically at 3 AM GMT daily.
-    POST: Force analysis to run now (manual trigger).
+    GET: Returns cached analysis status for ?type= (defaults to claude_md).
+    POST: Force analysis sweep to run now (runs all configured file types).
     """
+    file_type = request.args.get('type', DEFAULT_FILE_TYPE)
+    if file_type not in FILE_TYPES:
+        file_type = DEFAULT_FILE_TYPE
+
     if request.method == 'POST':
-        # Manual trigger - force analysis now
         success = run_analysis_now()
         if success:
             return jsonify({
@@ -1616,23 +1709,22 @@ def analyze_data():
             })
         else:
             return jsonify({
-                "status": "warning", 
+                "status": "warning",
                 "message": "Analysis is already running. Please wait for it to complete."
             })
-    
-    # GET request - check status
-    cache = load_analysis_cache()
-    
+
+    cache = load_analysis_cache(file_type)
+    viz_path = paths_for(file_type)["viz"]
+
     if cache:
-        # Check if visualization file exists
-        if cache['success'] and os.path.exists(VIS_HTML_PATH):
+        if cache['success'] and os.path.exists(viz_path):
             return jsonify({
-                "status": "success", 
+                "status": "success",
                 "message": f"Analysis completed on {datetime.fromisoformat(cache['timestamp']).strftime('%B %d, %Y at %I:%M %p')}. Next analysis scheduled for 3 AM GMT."
             })
         elif not cache['success']:
             return jsonify({
-                "status": "error", 
+                "status": "error",
                 "message": f"Last analysis failed on {datetime.fromisoformat(cache['timestamp']).strftime('%B %d, %Y at %I:%M %p')}: {cache.get('message', 'Unknown error')}. Next retry at 3 AM GMT."
             })
     
@@ -1663,22 +1755,28 @@ def analyze_data():
 
 @app.route('/visualization')
 def get_visualization():
-    """Serves the generated LDA visualization HTML."""
-    if os.path.exists(VIS_HTML_PATH):
+    """Serves the generated LDA visualization HTML for ?type= (defaults to claude_md)."""
+    file_type = request.args.get('type', DEFAULT_FILE_TYPE)
+    if file_type not in FILE_TYPES:
+        file_type = DEFAULT_FILE_TYPE
+
+    viz_path = paths_for(file_type)["viz"]
+    home_path = FILE_TYPES[file_type]["route_path"]
+
+    if os.path.exists(viz_path):
         try:
-            with open(VIS_HTML_PATH, 'r', encoding='utf-8') as f:
+            with open(viz_path, 'r', encoding='utf-8') as f:
                 content = f.read()
                 response = Response(content, mimetype='text/html')
-                # Add cache-control headers to prevent caching
                 response.headers['Cache-Control'] = 'no-cache, no-store, must-revalidate'
                 response.headers['Pragma'] = 'no-cache'
                 response.headers['Expires'] = '0'
                 return response
         except Exception as e:
-            print(f"Error reading visualization file: {e}")
+            print(f"Error reading visualization file {viz_path}: {e}")
             return f"Error loading visualization: {e}", 500
     else:
-        return redirect('/')
+        return redirect(home_path)
 
 @app.route('/how-it-works')
 def how_it_works():
@@ -1688,26 +1786,26 @@ def how_it_works():
 
 @app.route('/threejs-simple')
 def threejs_simple():
-    """Renders the simple Three.js network demo."""
-    return render_template('threejs_network_simple.html')
+    """Renders the simple Three.js network demo for ?type= (defaults to claude_md)."""
+    file_type = request.args.get('type', DEFAULT_FILE_TYPE)
+    if file_type not in FILE_TYPES:
+        file_type = DEFAULT_FILE_TYPE
+    return render_template('threejs_network_simple.html', file_type=file_type)
 
-def extract_topics_from_lda_model():
+def extract_topics_from_lda_model(file_type=DEFAULT_FILE_TYPE):
     """Extract topic data from the actual LDA model for 3D visualization."""
     try:
-        # Check if we have a recent visualization file to extract data from
-        if not os.path.exists(VIS_HTML_PATH):
+        viz_path = paths_for(file_type)["viz"]
+        if not os.path.exists(viz_path):
             return None
-            
-        # Load the cached analysis results
-        cache = load_analysis_cache()
+
+        cache = load_analysis_cache(file_type)
         if not cache or not cache.get('success'):
             return None
-            
-        # For now, we'll need to re-run the LDA to get the model data
-        # In a production version, we'd cache the model itself
-        # This is a simplified extraction - in reality you'd save the model
+
+        # We don't persist the model object; the caller falls back to cached topic data.
         return None
-        
+
     except Exception as e:
         logging.error(f"Error extracting topics from LDA model: {e}")
         return None
@@ -1715,14 +1813,15 @@ def extract_topics_from_lda_model():
 @app.route('/api/topics-3d')
 def get_topics_for_3d():
     """API endpoint to provide topic data for 3D visualization."""
-    # Try to get real data first
-    real_data = extract_topics_from_lda_model()
-    
+    file_type = request.args.get('type', DEFAULT_FILE_TYPE)
+    if file_type not in FILE_TYPES:
+        file_type = DEFAULT_FILE_TYPE
+
+    real_data = extract_topics_from_lda_model(file_type)
     if real_data:
         return jsonify(real_data)
-    
-    # Check if we have a successful analysis cached
-    cache = load_analysis_cache()
+
+    cache = load_analysis_cache(file_type)
     if cache and cache.get('success'):
         # Generate realistic data based on actual analysis stats
         colors = ["#667eea", "#f093fb", "#4facfe", "#43e97b", "#fa709a"]
@@ -1838,34 +1937,70 @@ def get_topics_for_3d():
 
 @app.route('/api/topic-evolution')
 def get_topic_evolution():
-    """API endpoint to provide topic evolution analysis over time."""
+    """API endpoint to provide topic evolution analysis over time for ?type=."""
+    file_type = request.args.get('type', DEFAULT_FILE_TYPE)
+    if file_type not in FILE_TYPES:
+        file_type = DEFAULT_FILE_TYPE
     try:
-        evolution_data = analyze_topic_evolution()
+        evolution_data = analyze_topic_evolution(file_type)
         return jsonify(evolution_data)
     except Exception as e:
         logging.error(f"Error in topic evolution endpoint: {e}")
         return jsonify({'error': str(e)}), 500
 
+
+def _tabs_with_active(active_file_type):
+    """Build the tab descriptor list for templates (display_name + route_path + active flag)."""
+    return [
+        {
+            'key': ft,
+            'label': FILE_TYPES[ft]['display_name'],
+            'path': FILE_TYPES[ft]['route_path'],
+            'is_active': ft == active_file_type,
+        }
+        for ft in FILE_TYPES
+    ]
+
+
 @app.route('/topic-evolution')
 def topic_evolution_page():
-    """Page to display topic evolution visualization."""
-    return render_template('topic_evolution.html')
+    """Page to display topic evolution visualization for ?type=."""
+    file_type = request.args.get('type', DEFAULT_FILE_TYPE)
+    if file_type not in FILE_TYPES:
+        file_type = DEFAULT_FILE_TYPE
+    return render_template(
+        'topic_evolution.html',
+        file_type=file_type,
+        display_name=FILE_TYPES[file_type]['display_name'],
+        tabs=_tabs_with_active(file_type),
+    )
 
 @app.route('/trends')
 def trends_page():
-    """Page to display term popularity trends over time."""
-    return render_template('trends.html')
+    """Page to display term popularity trends over time for ?type=."""
+    file_type = request.args.get('type', DEFAULT_FILE_TYPE)
+    if file_type not in FILE_TYPES:
+        file_type = DEFAULT_FILE_TYPE
+    return render_template(
+        'trends.html',
+        file_type=file_type,
+        display_name=FILE_TYPES[file_type]['display_name'],
+        tabs=_tabs_with_active(file_type),
+    )
 
 @app.route('/api/term-trends')
 def get_term_trends():
-    """API endpoint providing term popularity data over time.
+    """API endpoint providing term popularity data over time for ?type=.
 
     For each analysis run, sums the weight of each top-10 word across all
     topics in that run.  Returns the top N most-frequent terms as time
     series suitable for Chart.js.
     """
+    file_type = request.args.get('type', DEFAULT_FILE_TYPE)
+    if file_type not in FILE_TYPES:
+        file_type = DEFAULT_FILE_TYPE
     try:
-        history = load_analysis_history()
+        history = load_analysis_history(file_type)
         successful = [h for h in history if h.get('success') and h.get('topics_data')]
 
         if not successful:
@@ -1928,30 +2063,45 @@ def get_term_trends():
 
 @app.route('/api/analysis-run/<int:run_id>')
 def get_analysis_run_details(run_id):
-    """Get detailed information about a specific analysis run."""
+    """Get detailed information about a specific analysis run for ?type=."""
+    file_type = request.args.get('type', DEFAULT_FILE_TYPE)
+    if file_type not in FILE_TYPES:
+        file_type = DEFAULT_FILE_TYPE
     try:
-        # Use JSON files only (no database)
-        history = load_analysis_history()
+        history = load_analysis_history(file_type)
         if run_id < len(history):
             return jsonify(history[run_id])
         else:
             return jsonify({'error': 'Analysis run not found'}), 404
-            
+
     except Exception as e:
         logging.error(f"Error retrieving analysis run {run_id}: {e}")
         return jsonify({'error': str(e)}), 500
 
 @app.route('/api/database-stats')
 def get_database_stats():
-    """Get statistics from JSON files (no database)."""
+    """Get JSON-file storage stats. Returns a per-file-type breakdown plus totals."""
     try:
-        # Stats from JSON files only
-        history = load_analysis_history()
+        per_type = {}
+        total_runs = 0
+        total_successful = 0
+        for ft in FILE_TYPES:
+            history = load_analysis_history(ft)
+            successful = len([h for h in history if h.get('success')])
+            per_type[ft] = {
+                'total_runs': len(history),
+                'successful_runs': successful,
+                'success_rate': (successful / len(history) * 100) if history else 0,
+            }
+            total_runs += len(history)
+            total_successful += successful
+
         return jsonify({
-            'total_runs': len(history),
-            'successful_runs': len([h for h in history if h.get('success')]),
             'database_type': 'JSON Files (No Database)',
-            'success_rate': len([h for h in history if h.get('success')]) / len(history) * 100 if history else 0
+            'total_runs': total_runs,
+            'successful_runs': total_successful,
+            'success_rate': (total_successful / total_runs * 100) if total_runs else 0,
+            'per_file_type': per_type,
         })
     except Exception as e:
         logging.error(f"Error getting stats: {e}")
@@ -1961,9 +2111,35 @@ def get_database_stats():
 memory_manager = get_memory_manager(logging.getLogger(__name__))
 log_memory('startup', logging.getLogger(__name__))
 
+
+def migrate_legacy_data_files():
+    """One-time migration: copy legacy single-type data files into the new claude_md slots.
+
+    Preserves the originals (data/last_analysis.json and data/analysis_history.json)
+    so a rollback can still read them. Skips the copy if the new file already exists
+    so a successful first run isn't clobbered.
+    """
+    legacy_pairs = [
+        (os.path.join(PERSISTENT_DATA_DIR, "last_analysis.json"),
+         paths_for(DEFAULT_FILE_TYPE)["cache"]),
+        (os.path.join(PERSISTENT_DATA_DIR, "analysis_history.json"),
+         paths_for(DEFAULT_FILE_TYPE)["history"]),
+    ]
+    for legacy_path, new_path in legacy_pairs:
+        try:
+            if os.path.exists(legacy_path) and not os.path.exists(new_path):
+                os.makedirs(os.path.dirname(new_path), exist_ok=True)
+                shutil.copy2(legacy_path, new_path)
+                logging.info(f"Migrated legacy data: {legacy_path} -> {new_path}")
+        except Exception as e:
+            logging.error(f"Failed to migrate {legacy_path} -> {new_path}: {e}")
+
+
+migrate_legacy_data_files()
+
 # Start the analysis scheduler when the app starts
 start_analysis_scheduler()
-logging.info("Claude.md analyzer started with daily 3 AM GMT scheduling")
+logging.info(f"Analyzer started with daily 3 AM GMT scheduling for file types: {list(FILE_TYPES.keys())}")
 
 # --- Run the Flask App ---
 if __name__ == '__main__':
