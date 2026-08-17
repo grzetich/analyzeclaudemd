@@ -54,6 +54,11 @@ This Flask web application analyzes `claude.md` files from GitHub repositories u
 3. Wait for LDA processing to complete
 4. Click "View Visualization" to see discovered topics
 
+## Troubleshooting
+
+- A run that reports zero files means the GitHub request failed, not that nothing matched. `python scripts/check_github_access.py` names the cause (token expired, quota exhausted, query rejected, downloads blocked).
+- `python test_collection.py` covers the collection failure paths offline, with no network or PAT needed.
+
 ## Rate Limits & Constraints
 
 - **GitHub API**: 5,000 requests/hour with PAT, 30 requests/minute for code search

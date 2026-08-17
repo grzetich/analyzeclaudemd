@@ -760,7 +760,15 @@ def run_analysis_now():
             analysis_logger.info(f"--- [{file_type}] Starting collection (query={search_query}) ---")
         logging.info(f"[{file_type}] Collecting files from GitHub (query={search_query})...")
 
-        collected_documents = get_claude_md_files(search_query, HEADERS, max_files=500)
+        try:
+            collected_documents = get_claude_md_files(search_query, HEADERS, max_files=500)
+        except GitHubCollectionError as e:
+            error_msg = f"GitHub collection failed: {e}"
+            logging.error(f"[{file_type}] {error_msg}")
+            if analysis_logger:
+                analysis_logger.error(f"[{file_type}] {error_msg}")
+            save_analysis_cache(file_type, False, error_msg, files_collected=0, topics_discovered=0)
+            return False
 
         collection_memory = log_memory_usage(f"[{file_type}] after GitHub collection")
         if analysis_logger:
@@ -914,12 +922,125 @@ atexit.register(cleanup_temp_files)
 
 # --- Helper Functions (from previous responses) ---
 
+class GitHubCollectionError(Exception):
+    """A GitHub request failed outright.
+
+    Distinct from a search that legitimately matched nothing: callers must not
+    report a failed request as "no files found".
+    """
+
+    def __init__(self, message, status_code=None):
+        super().__init__(message)
+        self.status_code = status_code
+
+
+# Transient failures (5xx, secondary rate limits, dropped connections) are worth
+# a short retry. Bad credentials and malformed queries are not - they surface
+# immediately so the failure message names the real cause.
+SEARCH_MAX_ATTEMPTS = 3
+SEARCH_BACKOFF_SECONDS = [2, 4, 8]
+# Longest we will sit waiting for a primary rate-limit window to reset. The code
+# search limit resets within a minute; anything longer means something else is
+# wrong, and a worker blocked for an hour is worse than a failed run.
+RATE_LIMIT_MAX_WAIT_SECONDS = 120
+
+
+def _describe_response(response):
+    """Short, log-safe summary of a failed GitHub response."""
+    body = " ".join((response.text or "").split())
+    return f"{response.status_code} {body[:200]}"
+
+
+def _github_search_page(query, headers, page, per_page):
+    """Fetch one page of code-search results, retrying transient failures.
+
+    Returns the response so the caller can read both items and pagination links.
+    Raises GitHubCollectionError if the page could not be fetched.
+    """
+    params = {
+        "q": query,
+        "page": page,
+        "per_page": per_page,
+        "sort": "indexed",
+        "order": "desc"
+    }
+
+    for attempt in range(1, SEARCH_MAX_ATTEMPTS + 1):
+        last_attempt = attempt == SEARCH_MAX_ATTEMPTS
+
+        def retry_or_fail(reason):
+            """Sleep and continue, or raise once the attempts are spent."""
+            if last_attempt:
+                raise GitHubCollectionError(
+                    f"GitHub search failed after {attempt} attempts: {reason}")
+            delay = SEARCH_BACKOFF_SECONDS[attempt - 1]
+            logging.warning(f"GitHub search attempt {attempt} failed ({reason}); retrying in {delay}s")
+            time.sleep(delay)
+
+        try:
+            response = requests.get(BASE_URL, headers=headers, params=params, timeout=30)
+        except requests.RequestException as e:
+            retry_or_fail(str(e))
+            continue
+
+        if response.status_code == 200:
+            return response
+
+        if response.status_code == 401:
+            raise GitHubCollectionError(
+                "GitHub rejected the credentials (401). GITHUB_PAT is missing, expired, or revoked: "
+                f"{_describe_response(response)}", 401)
+
+        if response.status_code == 422:
+            raise GitHubCollectionError(
+                f"GitHub rejected the query '{query}' (422): {_describe_response(response)}", 422)
+
+        if response.status_code in (403, 429):
+            remaining = response.headers.get("X-RateLimit-Remaining")
+            retry_after = response.headers.get("Retry-After")
+
+            if remaining == "0":
+                reset_time = int(response.headers.get("X-RateLimit-Reset", 0))
+                wait = max(0, reset_time - int(time.time()) + 5)
+                if wait > RATE_LIMIT_MAX_WAIT_SECONDS:
+                    raise GitHubCollectionError(
+                        f"Rate limited with {wait}s until reset, longer than the "
+                        f"{RATE_LIMIT_MAX_WAIT_SECONDS}s this run will wait", response.status_code)
+                logging.warning(f"Rate limit exhausted; sleeping {wait}s until {time.ctime(reset_time)}")
+                time.sleep(wait)
+                continue
+
+            if retry_after:
+                wait = min(int(retry_after), RATE_LIMIT_MAX_WAIT_SECONDS)
+                logging.warning(f"Secondary rate limit; honouring Retry-After of {wait}s")
+                time.sleep(wait)
+                continue
+
+            # 403 with quota left is a permissions problem, not a timing one.
+            raise GitHubCollectionError(
+                "GitHub returned 403 with quota remaining - check that the token grants "
+                f"public repository access and can use code search: {_describe_response(response)}",
+                response.status_code)
+
+        if response.status_code >= 500:
+            retry_or_fail(_describe_response(response))
+            continue
+
+        raise GitHubCollectionError(
+            f"Unexpected GitHub response: {_describe_response(response)}", response.status_code)
+
+    raise GitHubCollectionError(
+        f"GitHub search still rate limited after {SEARCH_MAX_ATTEMPTS} attempts")
+
+
+
 def get_claude_md_files(query, headers, max_files=100): # Limiting for MVP and rate limits
     """
     Searches GitHub for claude.md files and retrieves their content.
     Handles pagination and basic rate limit adherence with memory monitoring.
     """
     all_file_contents = []
+    download_failures = 0
     page = 1
     per_page = 100 # Max per_page for code search is 100
 
@@ -930,106 +1051,97 @@ def get_claude_md_files(query, headers, max_files=100): # Limiting for MVP and r
     initial_memory = log_memory_usage("at file collection start")
 
     while len(all_file_contents) < max_files:
-        params = {
-            "q": query,
-            "page": page,
-            "per_page": per_page,
-            "sort": "indexed",
-            "order": "desc"
-        }
-          
-        response = requests.get(BASE_URL, headers=headers, params=params)
+        try:
+            response = _github_search_page(query, headers, page, per_page)
+        except GitHubCollectionError as e:
+            # Files already downloaded are still worth analysing, but failing
+            # with nothing collected must not be reported as "no matches".
+            if all_file_contents:
+                logging.warning(f"Stopping collection early after {len(all_file_contents)} files: {e}")
+                break
+            raise
 
-        if response.status_code == 200:
-            data = response.json()
-            items = data.get("items", [])
+        items = response.json().get("items", [])
 
-            if not items:
-                print("No more items found on GitHub search.")
-                break # No more items, exit loop
+        if not items:
+            print("No more items found on GitHub search.")
+            break # No more items, exit loop
 
-            for item in items:
-                if len(all_file_contents) >= max_files:
-                    break # Stop if max_files limit is reached
+        for item in items:
+            if len(all_file_contents) >= max_files:
+                break # Stop if max_files limit is reached
 
-                # Memory monitoring every 50 files (like viberater pattern)
-                if len(all_file_contents) % 50 == 0 and len(all_file_contents) > 0:
-                    current_memory = log_memory_usage(f"after {len(all_file_contents)} files")
-                    # Emergency cleanup if memory gets too high
-                    if current_memory['rss_mb'] > 500:
-                        logging.warning(f"High memory during collection: {current_memory['rss_mb']}MB - forcing cleanup")
-                        gc.collect()
-                        gc.collect()
+            # Memory monitoring every 50 files (like viberater pattern)
+            if len(all_file_contents) % 50 == 0 and len(all_file_contents) > 0:
+                current_memory = log_memory_usage(f"after {len(all_file_contents)} files")
+                # Emergency cleanup if memory gets too high
+                if current_memory['rss_mb'] > 500:
+                    logging.warning(f"High memory during collection: {current_memory['rss_mb']}MB - forcing cleanup")
+                    gc.collect()
+                    gc.collect()
 
-                download_url = item.get("download_url")
-                if download_url:
-                    try:
-                        file_response = requests.get(download_url, headers=headers)
-                        if file_response.status_code == 200:
-                            all_file_contents.append(file_response.text)
-                            print(f"  Downloaded via download_url: {item['repository']['full_name']}/{item['path']}")
-                        else:
-                            print(f"  Failed to download {item['path']} from {item['repository']['full_name']}: {file_response.status_code}")
-                    except Exception as e:
-                        print(f"  Error downloading {item['path']} from {item['repository']['full_name']}: {e}")
-                else:
-                    # Fallback to GitHub Contents API for public repos
-                    repo_full_name = item['repository']['full_name']
-                    file_path = item['path']
-                    contents_url = f"https://api.github.com/repos/{repo_full_name}/contents/{file_path}"
-                    
-                    try:
-                        contents_response = requests.get(contents_url, headers=headers)
-                        if contents_response.status_code == 200:
-                            contents_data = contents_response.json()
-                            # Contents API returns a list when the path is a directory; skip those
-                            if isinstance(contents_data, list):
-                                print(f"  Skipping directory listing for {file_path} in {repo_full_name}")
-                            elif contents_data.get('encoding') == 'base64':
-                                # Decode base64 content
-                                content = base64.b64decode(contents_data['content']).decode('utf-8')
-                                all_file_contents.append(content)
-                                print(f"  Downloaded via Contents API: {repo_full_name}/{file_path}")
-                            else:
-                                print(f"  Unsupported encoding for {file_path} in {repo_full_name}: {contents_data.get('encoding')}")
-                        elif contents_response.status_code == 404:
-                            print(f"  File not found or repo is private: {repo_full_name}/{file_path}")
-                        elif contents_response.status_code == 403:
-                            print(f"  Access forbidden (likely private repo): {repo_full_name}/{file_path}")
-                        else:
-                            print(f"  Contents API failed for {repo_full_name}/{file_path}: {contents_response.status_code}")
-                    except Exception as e:
-                        print(f"  Error using Contents API for {repo_full_name}/{file_path}: {e}")
-
-            # Check if there are more pages
-            if "next" in response.links and len(all_file_contents) < max_files:
-                page += 1
-                # GitHub API best practice: wait a bit between requests to avoid hitting secondary limits
-                time.sleep(1) # Small delay
+            download_url = item.get("download_url")
+            if download_url:
+                try:
+                    file_response = requests.get(download_url, headers=headers)
+                    if file_response.status_code == 200:
+                        all_file_contents.append(file_response.text)
+                        print(f"  Downloaded via download_url: {item['repository']['full_name']}/{item['path']}")
+                    else:
+                        download_failures += 1
+                        print(f"  Failed to download {item['path']} from {item['repository']['full_name']}: {file_response.status_code}")
+                except Exception as e:
+                    download_failures += 1
+                    print(f"  Error downloading {item['path']} from {item['repository']['full_name']}: {e}")
             else:
-                break # No more pages
+                # Fallback to GitHub Contents API for public repos
+                repo_full_name = item['repository']['full_name']
+                file_path = item['path']
+                contents_url = f"https://api.github.com/repos/{repo_full_name}/contents/{file_path}"
+                
+                try:
+                    contents_response = requests.get(contents_url, headers=headers)
+                    if contents_response.status_code == 200:
+                        contents_data = contents_response.json()
+                        # Contents API returns a list when the path is a directory; skip those
+                        if isinstance(contents_data, list):
+                            print(f"  Skipping directory listing for {file_path} in {repo_full_name}")
+                        elif contents_data.get('encoding') == 'base64':
+                            # Decode base64 content
+                            content = base64.b64decode(contents_data['content']).decode('utf-8')
+                            all_file_contents.append(content)
+                            print(f"  Downloaded via Contents API: {repo_full_name}/{file_path}")
+                        else:
+                            print(f"  Unsupported encoding for {file_path} in {repo_full_name}: {contents_data.get('encoding')}")
+                    elif contents_response.status_code == 404:
+                        download_failures += 1
+                        print(f"  File not found or repo is private: {repo_full_name}/{file_path}")
+                    elif contents_response.status_code == 403:
+                        download_failures += 1
+                        print(f"  Access forbidden (likely private repo): {repo_full_name}/{file_path}")
+                    else:
+                        download_failures += 1
+                        print(f"  Contents API failed for {repo_full_name}/{file_path}: {contents_response.status_code}")
+                except Exception as e:
+                    download_failures += 1
+                    print(f"  Error using Contents API for {repo_full_name}/{file_path}: {e}")
 
-        elif response.status_code == 403:
-            if "X-RateLimit-Remaining" in response.headers:
-                remaining = int(response.headers["X-RateLimit-Remaining"])
-                if remaining == 0:
-                    reset_time = int(response.headers["X-RateLimit-Reset"])
-                    current_time = int(time.time())
-                    sleep_duration = max(0, reset_time - current_time + 5) # Add 5 seconds buffer
-                    print(f"Rate limit hit ({remaining} requests remaining). Sleeping for {sleep_duration} seconds until {time.ctime(reset_time)}.")
-                    time.sleep(sleep_duration)
-                    continue # Try again after sleeping
-                else:
-                    print(f"Error 403 (Forbidden) but {remaining} requests remaining. Check token permissions or other limits: {response.text}")
-            else:
-                print(f"Error 403 (Forbidden) without rate limit info. Check token or API details: {response.text}")
-            break # Break on persistent 403
+        # Check if there are more pages
+        if "next" in response.links and len(all_file_contents) < max_files:
+            page += 1
+            # GitHub API best practice: wait a bit between requests to avoid hitting secondary limits
+            time.sleep(1) # Small delay
         else:
-            print(f"Error fetching data: {response.status_code} - {response.text}")
-            break
+            break # No more pages
       
+    if not all_file_contents and download_failures:
+        raise GitHubCollectionError(
+            f"Search matched files but all {download_failures} downloads failed - "
+            "check that the token can read public repository contents")
+
     print(f"Finished collection. Total {len(all_file_contents)} files collected.")
-    logging.info(f"Finished collection. Total {len(all_file_contents)} files collected.")
+    logging.info(f"Finished collection. Total {len(all_file_contents)} files collected "
+                 f"({download_failures} downloads failed).")
     
     # Final memory check after collection
     final_memory = log_memory_usage("after file collection complete")
