@@ -67,7 +67,7 @@ docker-compose up --build
 
 | Feature | Development | Production |
 |---------|-------------|------------|
-| **Python Version** | 3.11 | 3.11 (Render.com) |
+| **Python Version** | 3.13 | 3.13 (Render.com) |
 | **WSGI Server** | Gunicorn (reload) | Gunicorn (optimized) |
 | **Debug Mode** | ON | OFF |
 | **Live Reload** | ✅ | ❌ |
@@ -157,7 +157,7 @@ docker stats
 ## 🚀 Deployment
 
 The Docker setup matches production:
-- Same Python version (3.11)
+- Same Python version (3.13)
 - Same dependencies (requirements.txt)
 - Same WSGI server (Gunicorn)
 - Same environment variables

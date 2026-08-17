@@ -2,13 +2,15 @@ services:
   - type: web
     name: claude-topic-analyzer
     env: python
-    buildCommand: pip install -r requirements.txt
+    # --retries/--timeout ride out transient 5xx responses from the PyPI CDN,
+    # which have failed builds mid-download before
+    buildCommand: pip install --retries 10 --timeout 60 -r requirements.txt
     startCommand: gunicorn app:app
     envVars:
       - key: GITHUB_PAT
         sync: false  # Will be set manually in Render dashboard
       - key: PYTHON_VERSION
-        value: 3.11.0
+        value: 3.13.4
     plan: free
     disk:
       name: claude-analyzer-data

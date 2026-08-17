@@ -42,7 +42,6 @@ def test_environment():
         'numpy': 'numpy',
         'scipy': 'scipy', 
         'sklearn': 'scikit-learn',
-        'pandas': 'pandas',
         'psutil': 'psutil'
     }
     
@@ -156,7 +155,7 @@ def suggest_installation_strategy(results):
     missing_scientific = []
     
     basic_required = ['flask', 'requests', 'nltk']
-    scientific_optional = ['numpy', 'scikit-learn', 'scipy', 'pandas', 'psutil']
+    scientific_optional = ['numpy', 'scikit-learn', 'scipy', 'psutil']
     
     for module in basic_required:
         if module not in results or '[TEST]' in results[module]:
@@ -178,7 +177,7 @@ def suggest_installation_strategy(results):
             print(f"     pip install {module}")
         
         print("\n   Option 2 - Use conda (may have better binary support):")
-        print("     conda install numpy scipy scikit-learn pandas")
+        print("     conda install numpy scipy scikit-learn")
         
         print("\n   Option 3 - Use mock version (app_mock.py) to bypass C++ issues")
     

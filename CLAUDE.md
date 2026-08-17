@@ -36,8 +36,8 @@ This Flask web application analyzes `claude.md` files from GitHub repositories u
 ## Deployment
 
 ### Render.com Configuration
-- **Runtime**: Python 3.11+ (compatible with scikit-learn)
-- **Build Command**: `pip install -r requirements.txt`
+- **Runtime**: Python 3.13.4, pinned in `.python-version` (Render ignores the deprecated `runtime.txt`)
+- **Build Command**: `pip install --retries 10 --timeout 60 -r requirements.txt`
 - **Start Command**: `gunicorn app:app`
 - **Environment Variable**: `GITHUB_PAT` (GitHub Personal Access Token)
 
@@ -45,6 +45,7 @@ This Flask web application analyzes `claude.md` files from GitHub repositories u
 - **Python 3.13 Ready**: Uses scikit-learn instead of gensim for compatibility
 - **Pre-compiled Wheels**: All dependencies available as wheels on Linux
 - **No C Compilation**: Avoids build issues on deployment platforms
+- **Bounded Versions**: `requirements.txt` caps each dependency below its next major release so builds stay reproducible
 
 ## Usage Instructions
 

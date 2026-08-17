@@ -1,5 +1,5 @@
-# Use Python 3.11 to match production (Render.com uses Python 3.11)
-FROM python:3.11-slim
+# Use Python 3.13 to match production (see .python-version / render.yaml)
+FROM python:3.13-slim
 
 # Set working directory
 WORKDIR /app
@@ -12,7 +12,7 @@ RUN apt-get update && apt-get install -y \
 
 # Copy requirements and install Python dependencies
 COPY requirements.txt .
-RUN pip install --no-cache-dir -r requirements.txt
+RUN pip install --no-cache-dir --retries 10 --timeout 60 -r requirements.txt
 
 # Download NLTK data
 RUN python -c "import nltk; nltk.download('stopwords'); nltk.download('wordnet'); nltk.download('punkt_tab')"

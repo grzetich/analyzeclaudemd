@@ -41,8 +41,7 @@ def test_dependencies():
     scientific = {
         'numpy': 'numpy',
         'scipy': 'scipy', 
-        'sklearn': 'scikit-learn',
-        'pandas': 'pandas'
+        'sklearn': 'scikit-learn'
     }
     
     for module_name, package_name in scientific.items():
@@ -134,7 +133,7 @@ def main():
     
     # Check scientific stack
     scientific_issues = []
-    for pkg in ['numpy', 'scikit-learn', 'scipy', 'pandas']:
+    for pkg in ['numpy', 'scikit-learn', 'scipy']:
         if pkg not in deps or 'MISSING' in deps[pkg] or 'ERROR' in deps[pkg]:
             scientific_issues.append(pkg)
     
@@ -142,8 +141,8 @@ def main():
         print("3. Scientific stack issues detected:")
         print(f"   Missing: {', '.join(scientific_issues)}")
         print("   Options:")
-        print("   a) Try: pip install numpy scipy scikit-learn pandas")
-        print("   b) Use conda: conda install numpy scipy scikit-learn pandas")
+        print("   a) Try: pip install numpy scipy scikit-learn")
+        print("   b) Use conda: conda install numpy scipy scikit-learn")
         print("   c) Use mock version: python app_mock.py")
     
     if flask_ok and requests_ok:
